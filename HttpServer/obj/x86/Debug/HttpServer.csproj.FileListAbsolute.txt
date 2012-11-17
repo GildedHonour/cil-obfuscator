@@ -1,0 +1,6 @@
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\HttpServer\bin\Debug\HttpServer.exe.config
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\HttpServer\bin\Debug\HttpServer.exe
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\HttpServer\bin\Debug\HttpServer.pdb
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\HttpServer\obj\x86\Debug\HttpServer.exe
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\HttpServer\obj\x86\Debug\HttpServer.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpServer\obj\x86\Debug\HttpServer.csprojResolveAssemblyReference.cache

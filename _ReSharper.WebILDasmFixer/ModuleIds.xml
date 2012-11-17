@@ -1,0 +1,5 @@
+<Modules>
+  <Module PersistentId="F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58" ModuleId="WebILDasmFixer" />
+  <Module PersistentId="607E31FE-108E-4D73-A74F-1CCB35B07EBE" ModuleId="HttpServer" />
+  <Module PersistentId="System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" ModuleId="System" />
+</Modules>

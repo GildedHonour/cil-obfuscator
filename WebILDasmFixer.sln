@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebILDasmFixer", "WebILDasmFixer\WebILDasmFixer.csproj", "{F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpServer", "HttpServer\HttpServer.csproj", "{607E31FE-108E-4D73-A74F-1CCB35B07EBE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestAssembly", "TestAssembly\TestAssembly.csproj", "{BBB67FC9-EB00-4229-9A04-A6F2DC8B1E7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpClient", "HttpClient\HttpClient.csproj", "{6BC0EE17-BB39-427A-A770-FA4B5569A29D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58}.Debug|x86.ActiveCfg = Debug|x86
+		{F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58}.Debug|x86.Build.0 = Debug|x86
+		{F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58}.Release|x86.ActiveCfg = Release|x86
+		{F1DC1FB4-C0A9-49F3-8F4F-60F6C2BD1E58}.Release|x86.Build.0 = Release|x86
+		{607E31FE-108E-4D73-A74F-1CCB35B07EBE}.Debug|x86.ActiveCfg = Debug|x86
+		{607E31FE-108E-4D73-A74F-1CCB35B07EBE}.Debug|x86.Build.0 = Debug|x86
+		{607E31FE-108E-4D73-A74F-1CCB35B07EBE}.Release|x86.ActiveCfg = Release|x86
+		{607E31FE-108E-4D73-A74F-1CCB35B07EBE}.Release|x86.Build.0 = Release|x86
+		{BBB67FC9-EB00-4229-9A04-A6F2DC8B1E7C}.Debug|x86.ActiveCfg = Debug|x86
+		{BBB67FC9-EB00-4229-9A04-A6F2DC8B1E7C}.Debug|x86.Build.0 = Debug|x86
+		{BBB67FC9-EB00-4229-9A04-A6F2DC8B1E7C}.Release|x86.ActiveCfg = Release|x86
+		{BBB67FC9-EB00-4229-9A04-A6F2DC8B1E7C}.Release|x86.Build.0 = Release|x86
+		{6BC0EE17-BB39-427A-A770-FA4B5569A29D}.Debug|x86.ActiveCfg = Debug|x86
+		{6BC0EE17-BB39-427A-A770-FA4B5569A29D}.Debug|x86.Build.0 = Debug|x86
+		{6BC0EE17-BB39-427A-A770-FA4B5569A29D}.Release|x86.ActiveCfg = Release|x86
+		{6BC0EE17-BB39-427A-A770-FA4B5569A29D}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

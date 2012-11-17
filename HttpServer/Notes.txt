@@ -1,0 +1,7 @@
+﻿Server
+1) Refactor PrintResult(), ValidateQueryString(), GetQueryStringData() not using instance variables
+2) Make the server return error messages back to client and print them to console
+3) Make the client understand error messages and not confuse them with success ones which includes constants
+
+
+4) Client: get rid of lambdas to make cil more understandable

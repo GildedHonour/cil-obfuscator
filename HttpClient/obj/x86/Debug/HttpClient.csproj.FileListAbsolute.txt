@@ -1,0 +1,10 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\HttpClient.exe.config
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\HttpClient.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\HttpClient.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\obj\x86\Debug\HttpClient.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\obj\x86\Debug\HttpClient.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\obj\x86\Debug\HttpClient.csprojResolveAssemblyReference.cache
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\System.Net.Http.dll
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\System.Net.Http.WebRequest.dll
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\System.Net.Http.xml
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\HttpClient\bin\Debug\System.Net.Http.WebRequest.xml

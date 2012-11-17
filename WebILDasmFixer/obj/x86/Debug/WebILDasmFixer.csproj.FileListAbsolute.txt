@@ -1,0 +1,5 @@
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\WebILDasmFixer\bin\Debug\WebILDasmFixer.exe
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\WebILDasmFixer\bin\Debug\WebILDasmFixer.pdb
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\WebILDasmFixer\obj\x86\Debug\WebILDasmFixer.exe
+c:\users\alex\documents\visual studio 2010\Projects\WebILDasmFixer\WebILDasmFixer\obj\x86\Debug\WebILDasmFixer.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\WebILDasmFixer\bin\Debug\WebILDasmFixer.exe.config

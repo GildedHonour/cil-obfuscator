@@ -1,0 +1,1 @@
+ildasm.exe TestAssembly.exe /output:TestAssembly.il
