@@ -1,0 +1,12 @@
+﻿//source
+
+IL_001b:	ldc.i4.s   12														// constant
+IL_001c:	call       void [mscorlib]System.Console::WriteLine(int32)			// method a constant comes in
+     
+
+
+//replace with
+
+IL_001b:	ldc.i4     0x29a  													//	constant id
+			call       int32 {0}::LoadInt32Simple(int32)						// 	constant loader
+IL_001c:	call       void [mscorlib]System.Console::WriteLine(int32)       	// 	method a constant comes in

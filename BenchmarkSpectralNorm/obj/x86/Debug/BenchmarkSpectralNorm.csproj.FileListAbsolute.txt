@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkSpectralNorm\bin\Debug\BenchmarkSpectralNorm.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkSpectralNorm\bin\Debug\BenchmarkSpectralNorm.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkSpectralNorm\obj\x86\Debug\BenchmarkSpectralNorm.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkSpectralNorm\obj\x86\Debug\BenchmarkSpectralNorm.pdb

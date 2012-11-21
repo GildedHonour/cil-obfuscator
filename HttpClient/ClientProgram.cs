@@ -13,14 +13,8 @@ namespace HttpClient
 
         public static void Main(string[] args)
         {
-            for (int i = 0; i < 5; i++)
-            {
-                SendAsyncRequestToOneFile();
-                Console.WriteLine();
-            }
-           
-
-            //SendSyncRequest();
+            SendAsyncRequestToDirrentFiles();
+            //SendAsyncRequestToOneFile();
         }
 
         private static void SendSyncRequest()
@@ -55,17 +49,18 @@ namespace HttpClient
             
             const string fileName1 = "file1.txt";
             const string fileName2 = "file2.txt";
-            
+            const string fileName3 = "file3.txt";
+
             string QueryString1 = string.Format("?file_name={0}&constant_id=1", fileName1);
             string QueryString2 = string.Format("?file_name={0}&constant_id=2", fileName2);
             string QueryString3 = string.Format("?file_name={0}&constant_id=3", fileName1);
 
             string QueryString4 = string.Format("?file_name={0}&constant_id=4", fileName2);
-            string QueryString5 = string.Format("?file_name={0}&constant_id=5", fileName1);
-            string QueryString6 = string.Format("?file_name={0}&constant_id=6", fileName2);
+            string QueryString5 = string.Format("?file_name={0}&constant_id123=115", fileName1);
+            string QueryString6 = string.Format("?file_name123={0}&constant_id=6", fileName2);
             
-            string QueryString7 = string.Format("?file_name={0}&constant_id=7", fileName1);
-            string QueryString8 = string.Format("?file_name={0}&constant_id=8", fileName2);
+            string QueryString7 = string.Format("?file_name={0}&constant_id=7", fileName3);
+            string QueryString8 = string.Format("?file_name={0}&constant_id=8", fileName3);
 
             System.Net.Http.HttpClient client = new System.Net.Http.HttpClient { BaseAddress = new Uri(ServerUrl) };
 
@@ -88,10 +83,10 @@ namespace HttpClient
             responseTask6.ContinueWith(x => PrintResult(fileName2, 6, x));
 
             Task<HttpResponseMessage> responseTask7 = client.GetAsync(QueryString7);
-            responseTask7.ContinueWith(x => PrintResult(fileName1, 7, x));
+            responseTask7.ContinueWith(x => PrintResult(fileName3, 7, x));
 
             Task<HttpResponseMessage> responseTask8 = client.GetAsync(QueryString8);
-            responseTask8.ContinueWith(x => PrintResult(fileName2, 8, x));
+            responseTask8.ContinueWith(x => PrintResult(fileName3, 8, x));
 
             Console.ReadLine();
         }
@@ -99,7 +94,7 @@ namespace HttpClient
         private static void SendAsyncRequestToOneFile()
         {
 
-            const string fileName1 = "const-all-20121112-212051-TestAssembly.exe.txt";
+            const string fileName1 = "const-all-20121113-183435-TestAssembly.exe.txt";
 
             string QueryString1 = string.Format("?file_name={0}&constant_id=1", fileName1);
             string QueryString2 = string.Format("?file_name={0}&constant_id=2", fileName1);
@@ -107,10 +102,10 @@ namespace HttpClient
 
             string QueryString4 = string.Format("?file_name={0}&constant_id=4", fileName1);
             string QueryString5 = string.Format("?file_name={0}&constant_id=5", fileName1);
-            string QueryString6 = string.Format("?file_name={0}&constant_id=6", fileName1);
+            string QueryString6 = string.Format("?file_name={0}&constant_id=116", fileName1);
 
-            string QueryString7 = string.Format("?file_name={0}&constant_id=7", fileName1);
-            string QueryString8 = string.Format("?file_name={0}&constant_id=8", fileName1);
+            string QueryString7 = string.Format("?file_name={0}&constant_id123=7", fileName1);
+            string QueryString8 = string.Format("?file_name123={0}&constant_id=8", fileName1);
 
             System.Net.Http.HttpClient client = new System.Net.Http.HttpClient { BaseAddress = new Uri(ServerUrl) };
 

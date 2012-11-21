@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFastaRedux\bin\Debug\BenchmarkFastaRedux.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFastaRedux\bin\Debug\BenchmarkFastaRedux.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFastaRedux\obj\x86\Debug\BenchmarkFastaRedux.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFastaRedux\obj\x86\Debug\BenchmarkFastaRedux.pdb

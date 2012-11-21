@@ -23,6 +23,7 @@ namespace HttpClient
         private const int _arraySize = 50;
         private static string[] _constant = new string[_arraySize];
         private static bool[] _isConstantLoaded = new bool[_arraySize];
+        private static readonly bool _showConstantLoadingAlerts = true;
 
         #region Load constant methods
         /// <summary>
@@ -103,7 +104,11 @@ namespace HttpClient
         {
             if (_isConstantLoaded[id - 1])
             {
-                MessageBox.Show(string.Format("Memory cached constant: id => {0}, value => {1}", id, _constant[id - 1]));
+                if (_showConstantLoadingAlerts)
+                {
+                    MessageBox.Show(string.Format("Memory cached constant: id => {0}, value => {1}", id, _constant[id - 1]));
+                }
+
                 return _constant[id - 1];
             }
 
@@ -113,7 +118,11 @@ namespace HttpClient
                 string cachedConstant = GetCachedConstant(id, out cachedConstantExists);
                 if (cachedConstantExists)
                 {
-                    MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
+                    if (_showConstantLoadingAlerts)
+                    {
+                        MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
+                    }
+
                     lock (_locker)
                     {
                         _isConstantLoaded[id - 1] = true;
@@ -132,7 +141,11 @@ namespace HttpClient
                 _isConstantLoaded[id - 1] = true;
             }
 
-            MessageBox.Show(string.Format("Server constant: id => {0}, value => {1}", id, _constant[id - 1]));
+            if (_showConstantLoadingAlerts)
+            {
+                MessageBox.Show(string.Format("Server constant: id => {0}, value => {1}", id, _constant[id - 1]));
+            }
+
             return _constant[id - 1];
         }
 

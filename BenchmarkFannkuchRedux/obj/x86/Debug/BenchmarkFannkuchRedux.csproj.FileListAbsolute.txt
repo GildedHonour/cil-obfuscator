@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFannkuchRedux\bin\Debug\BenchmarkFannkuchRedux.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFannkuchRedux\bin\Debug\BenchmarkFannkuchRedux.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFannkuchRedux\obj\x86\Debug\BenchmarkFannkuchRedux.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkFannkuchRedux\obj\x86\Debug\BenchmarkFannkuchRedux.pdb

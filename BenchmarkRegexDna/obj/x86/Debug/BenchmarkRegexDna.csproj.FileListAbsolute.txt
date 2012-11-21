@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkRegexDna\bin\Debug\BenchmarkRegexDna.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkRegexDna\bin\Debug\BenchmarkRegexDna.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkRegexDna\obj\x86\Debug\BenchmarkRegexDna.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkRegexDna\obj\x86\Debug\BenchmarkRegexDna.pdb

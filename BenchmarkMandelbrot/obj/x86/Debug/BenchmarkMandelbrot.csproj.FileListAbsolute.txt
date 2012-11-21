@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkMandelbrot\bin\Debug\BenchmarkMandelbrot.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkMandelbrot\bin\Debug\BenchmarkMandelbrot.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkMandelbrot\obj\x86\Debug\BenchmarkMandelbrot.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkMandelbrot\obj\x86\Debug\BenchmarkMandelbrot.pdb

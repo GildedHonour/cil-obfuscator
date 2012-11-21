@@ -26,11 +26,16 @@ namespace HttpServer
         /// The server's folder
         /// </summary>
         private readonly string _folder;
-        
+
         /// <summary>
         /// Listener
         /// </summary>
         private readonly HttpListener _listener = new HttpListener();
+
+        /// <summary>
+        /// Locker
+        /// </summary>
+        private static readonly object _locker = new object();
 
         /// <summary>
         /// Is the server already started
@@ -41,7 +46,7 @@ namespace HttpServer
         /// Constructor
         /// </summary>
         /// <param name="prefix">Prefix of url address where server will be available. 
-        /// It must end with symbol /
+        /// It must be ended with symbol /
         /// e.g. "http://localhost:1234/aaa/bbb/"</param>
         /// <param name="folder">Folder where the server will look for the afile to read a constant from</param>
         public HttpServer(string prefix, string folder)
@@ -70,7 +75,11 @@ namespace HttpServer
             }
 
             _listener.Start();
-            IsStarted = true;
+            lock (_locker)
+            {
+                IsStarted = true;
+            }
+
             Console.WriteLine("Server is starting...");
             while (true)
             {
@@ -98,89 +107,91 @@ namespace HttpServer
         /// <param name="o">object to be casted to HttpListenerContext</param>
         private void ProcessRequest(object obj)
         {
+            Console.WriteLine("Processing the request...");
             HttpListenerContext context = obj as HttpListenerContext;
             //try
             //{
-            Console.WriteLine("Processing the request...");
-            using (Stream outputStream = context.Response.OutputStream)
-            using (MemoryStream outputMemoryStream = new MemoryStream())
+            using (StreamWriter writer = new StreamWriter(context.Response.OutputStream))
             {
-                byte[] errorMessages;
-                long streamLength;
-                if (ValidateQueryString(context.Request.QueryString, out errorMessages))
+                List<string> errors = GetQueryStringValidationErrors(context.Request.QueryString).ToList();
+                //There is no any error in validation
+                if (!errors.Any())
                 {
-                    QueryStringData queryStringData = GetQueryStringData(context.Request.QueryString);
-                    byte[] constantValue = GetConstantValueByID(queryStringData.FileName, queryStringData.ConstantID);
-                    if (constantValue != null)
+                    QueryStringData queryStringData = GetQueryStringData(context);
+                    string value = GetConstantValueByID(queryStringData);
+                    //Constant is found, everything is ok
+                    if (value != null)
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.OK;
-                        outputMemoryStream.Write(constantValue, 0, constantValue.Length);
-                        streamLength = constantValue.LongLength;
+                        writer.Write(value);
                     }
+                    //Constant is not found
                     else
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                        byte[] errorMessage = Encoding.UTF8.GetBytes(string.Format("constant {0} you have requested is not found", queryStringData.ConstantID));
-                        outputMemoryStream.Write(errorMessage, 0, errorMessage.Length);
-                        streamLength = errorMessage.LongLength;
+                        writer.Write(string.Format("constant {0} you have requested is not found", queryStringData.ConstantID));
                     }
 
-                    context.Response.ContentLength64 = streamLength;
-                    outputStream.Write(outputMemoryStream.ToArray(), 0, (int)streamLength);
-                    PrintResult(outputMemoryStream, context.Response.StatusCode, queryStringData);
+                    PrintSuccessfulResult(context.Response.StatusCode, queryStringData, value);
                 }
+                //There is an error in validation
                 else
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    outputMemoryStream.Write(errorMessages, 0, errorMessages.Length);
-                    streamLength = errorMessages.LongLength;
-
-                    context.Response.ContentLength64 = streamLength;
-                    outputStream.Write(outputMemoryStream.ToArray(), 0, (int)streamLength);
-                    PrintResult(outputMemoryStream, context.Response.StatusCode);
+                    errors.ForEach(writer.WriteLine);
+                    PrintErrorResult(context.Response.StatusCode, errors);
                 }
             }
-
-
             //}
             //catch (Exception e)
             //{
-            //    Console.WriteLine("There was an exception thrown - {0}", e.Message);
+            //    Console.WriteLine("There is an exception thrown - {0}", e.Message);
             //}
         }
 
         /// <summary>
-        /// Prints the result of a received request
+        /// Prints the successful result
         /// </summary>
-        /// <param name="memoryStream">MemoryStream</param>
-        /// <param name="statusCode">StatusCode</param>
-        /// <param name="constantID">ConstantID</param>
-        private void PrintResult(MemoryStream memoryStream, int statusCode, QueryStringData queryStringData)
+        /// <param name="statusCode">Status code</param>
+        /// <param name="queryStringData">Query string data</param>
+        /// <param name="constantValue">Constant value</param>
+        private void PrintSuccessfulResult(int statusCode, QueryStringData queryStringData, string constantValue)
         {
-            memoryStream.Position = 0;
-            using (StreamReader streamReader = new StreamReader(memoryStream))
+            PrintResultImpl(statusCode, () =>
             {
-                Console.WriteLine("The request has been processed...");
-                Console.WriteLine("\tStatus code: " + statusCode);
-                Console.WriteLine(string.Format("\tfileName: => {0}, id => {1}, value => {2}", queryStringData.FileName, queryStringData.ConstantID, streamReader.ReadToEnd()));
-                Console.WriteLine();
-            }
+                Console.WriteLine(string.Format("\tfileName: => {0}, id => {1}, value => {2}", queryStringData.FileName, queryStringData.ConstantID, constantValue));
+            });
         }
 
         /// <summary>
-        /// Prints the result to console
+        /// Prints the error result
         /// </summary>
-        /// <param name="memoryStream">Memory stream</param>
         /// <param name="statusCode">Status code</param>
-        private void PrintResult(MemoryStream memoryStream, int statusCode)
+        /// <param name="errors">IEnumerable of error strings</param>
+        private void PrintErrorResult(int statusCode, IEnumerable<string> errors)
         {
-            memoryStream.Position = 0;
-            using (StreamReader streamReader = new StreamReader(memoryStream))
+            PrintResultImpl(statusCode, () =>
             {
-                Console.WriteLine("The request has been processed...");
-                Console.WriteLine("\tStatus code: " + statusCode);
-                Console.WriteLine();
-            }
+                Console.WriteLine("\tErrors:");
+                foreach (string item in errors)
+                {
+                    Console.WriteLine(string.Format("\t\t{0}", item));
+                }
+
+            });
+        }
+
+        /// <summary>
+        /// Implementation of print result
+        /// </summary>
+        /// <param name="statusCode">Status code</param>
+        /// <param name="action">Action</param>
+        private void PrintResultImpl(int statusCode, Action action)
+        {
+            Console.WriteLine("The request has been processed...");
+            Console.WriteLine("\tStatus code: " + statusCode);
+            action();
+            Console.WriteLine();
         }
 
         /// <summary>
@@ -193,7 +204,10 @@ namespace HttpServer
                 Console.WriteLine("Server is stopping...");
                 _listener.Stop();
                 _listener.Close();
-                IsStarted = false;
+                lock (_locker)
+                {
+                    IsStarted = false;
+                }
             }
         }
 
@@ -202,8 +216,9 @@ namespace HttpServer
         /// </summary>
         /// <param name="queryString">Query string</param>
         /// <returns>Query string data as an object of QueryStringData</returns>
-        private QueryStringData GetQueryStringData(NameValueCollection queryString)
+        private QueryStringData GetQueryStringData(HttpListenerContext context)
         {
+            NameValueCollection queryString = context.Request.QueryString;
             string fullFileName = Path.Combine(_folder, queryString["file_name"]);
             int constantID = int.Parse(queryString["constant_id"]);
             return new QueryStringData(fullFileName, constantID);
@@ -262,28 +277,52 @@ namespace HttpServer
         }
 
         /// <summary>
-        /// Returns constant by its id
+        /// Returns constant value by its id
         /// </summary>
-        /// <param name="fileName">file name to read from</param>
-        /// <param name="constantID">constant id</param>
-        /// <returns>constant values as array of bytes </returns>
-        private byte[] GetConstantValueByID(string fileName, int constantID)
+        /// <param name="queryStringData">QueryStringData</param>
+        /// <returns>constant value</returns>
+        private string GetConstantValueByID(QueryStringData queryStringData)
         {
             const string regexPattern = @"(^\d+),\s+(.+)";
-            foreach (string item in File.ReadLines(fileName))
+            foreach (string item in File.ReadLines(queryStringData.FileName))
             {
                 Match match = Regex.Match(item, regexPattern);
                 if (match.Success)
                 {
                     int currentConstantID = int.Parse(match.Groups[1].Value);
-                    if (currentConstantID == constantID)
+                    if (currentConstantID == queryStringData.ConstantID)
                     {
-                        return Encoding.UTF8.GetBytes(match.Groups[2].Value);
+                        return match.Groups[2].Value;
                     }
                 }
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Validates query string and returns IEnumerable of string if there is any error
+        /// </summary>
+        /// <param name="queryString">Query string</param>
+        /// <returns>IEnumerable of string if there is any error</returns>
+        private IEnumerable<string> GetQueryStringValidationErrors(NameValueCollection queryString)
+        {
+            int constantID;
+            if (!int.TryParse(queryString["constant_id"], out constantID))
+            {
+                yield return "constant_id parameter is not valid or does not exist";
+            }
+
+            string fileName = queryString["file_name"];
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                yield return "file_name parameter is not valid or does not exist";
+            }
+
+            else if (!File.Exists(Path.Combine(_folder, fileName)))
+            {
+                yield return "requested file does not exist";
+            }
         }
     }
 }

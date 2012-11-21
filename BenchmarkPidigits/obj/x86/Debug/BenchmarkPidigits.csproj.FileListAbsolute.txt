@@ -1,0 +1,4 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkPidigits\bin\Debug\BenchmarkPidigits.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkPidigits\bin\Debug\BenchmarkPidigits.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkPidigits\obj\x86\Debug\BenchmarkPidigits.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\BenchmarkPidigits\obj\x86\Debug\BenchmarkPidigits.pdb
