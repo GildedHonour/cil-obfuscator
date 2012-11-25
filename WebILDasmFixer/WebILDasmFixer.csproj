@@ -46,7 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CILInstruction.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="PeekableStreamReader.cs" />
+    <Compile Include="WebILDasmProgram.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

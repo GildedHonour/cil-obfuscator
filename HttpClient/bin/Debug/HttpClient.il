@@ -56,13 +56,13 @@
   .ver 1:0:0:0
 }
 .module HttpClient.exe
-// MVID: {385114CA-4E80-489B-864C-0BD343B37846}
+// MVID: {27C17ACA-AED9-4157-AC99-D8A6E9119FDF}
 .imagebase 0x00400000
 .file alignment 0x00000200
 .stackreserve 0x00100000
 .subsystem 0x0003       // WINDOWS_CUI
 .corflags 0x00000003    //  ILONLY 32BITREQUIRED
-// Image base: 0x0000000000340000
+// Image base: 0x0000000000150000
 
 
 // =============== CLASS MEMBERS DECLARATION ===================
@@ -1232,8 +1232,8 @@
     IL_0069:  nop
     IL_006a:  ldarg.0
     IL_006b:  ldloca.s   cachedConstantExists
-    IL_006d:  call       string HttpClient.RemoteConstantLoader::GetCachedConstant(int32,
-                                                                                   bool&)
+    IL_006d:  call       string HttpClient.RemoteConstantLoader::GetFileCachedConstant(int32,
+                                                                                       bool&)
     IL_0072:  stloc.1
     IL_0073:  ldloc.0
     IL_0074:  ldc.i4.0
@@ -1316,22 +1316,22 @@
     IL_00f4:  ldarg.0
     IL_00f5:  call       string HttpClient.RemoteConstantLoader::GetRemoteConstant(int32)
     IL_00fa:  stloc.3
-    IL_00fb:  ldarg.0
-    IL_00fc:  ldloc.3
-    IL_00fd:  call       void HttpClient.RemoteConstantLoader::CacheConstantToFile(int32,
-                                                                                   string)
-    IL_0102:  nop
-    IL_0103:  ldc.i4.0
-    IL_0104:  stloc.s    '<>s__LockTaken1'
+    IL_00fb:  ldc.i4.0
+    IL_00fc:  stloc.s    '<>s__LockTaken1'
     .try
     {
-      IL_0106:  ldsfld     object HttpClient.RemoteConstantLoader::_locker
-      IL_010b:  dup
-      IL_010c:  stloc.s    CS$2$0002
-      IL_010e:  ldloca.s   '<>s__LockTaken1'
-      IL_0110:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
+      IL_00fe:  ldsfld     object HttpClient.RemoteConstantLoader::_locker
+      IL_0103:  dup
+      IL_0104:  stloc.s    CS$2$0002
+      IL_0106:  ldloca.s   '<>s__LockTaken1'
+      IL_0108:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
                                                                           bool&)
-      IL_0115:  nop
+      IL_010d:  nop
+      IL_010e:  nop
+      IL_010f:  ldarg.0
+      IL_0110:  ldloc.3
+      IL_0111:  call       void HttpClient.RemoteConstantLoader::CacheConstantToFile(int32,
+                                                                                     string)
       IL_0116:  nop
       IL_0117:  ldsfld     string[] HttpClient.RemoteConstantLoader::_constant
       IL_011c:  ldarg.0
@@ -1475,11 +1475,11 @@
   } // end of method RemoteConstantLoader::CacheConstantToFile
 
   .method private hidebysig static string 
-          GetCachedConstant(int32 id,
-                            [out] bool& cachedConstantExists) cil managed
+          GetFileCachedConstant(int32 id,
+                                [out] bool& cachedConstantExists) cil managed
   {
     // 
-    .maxstack  2
+    .maxstack  5
     .locals init ([0] class [mscorlib]System.IO.StreamReader reader,
              [1] string line,
              [2] int32 currentID,
@@ -1489,102 +1489,109 @@
              [6] bool CS$4$0001)
     IL_0000:  nop
     IL_0001:  ldsfld     string HttpClient.RemoteConstantLoader::_localCacheFileName
-    IL_0006:  newobj     instance void [mscorlib]System.IO.StreamReader::.ctor(string)
-    IL_000b:  stloc.0
+    IL_0006:  ldc.i4.3
+    IL_0007:  ldc.i4.1
+    IL_0008:  ldc.i4.3
+    IL_0009:  newobj     instance void [mscorlib]System.IO.FileStream::.ctor(string,
+                                                                             valuetype [mscorlib]System.IO.FileMode,
+                                                                             valuetype [mscorlib]System.IO.FileAccess,
+                                                                             valuetype [mscorlib]System.IO.FileShare)
+    IL_000e:  newobj     instance void [mscorlib]System.IO.StreamReader::.ctor(class [mscorlib]System.IO.Stream)
+    IL_0013:  stloc.0
     .try
     {
-      IL_000c:  nop
-      IL_000d:  br.s       IL_0078
+      IL_0014:  nop
+      IL_0015:  br.s       IL_0080
 
-      IL_000f:  nop
-      IL_0010:  ldloc.1
-      IL_0011:  ldstr      "^\\d+"
-      IL_0016:  call       class [System]System.Text.RegularExpressions.Match [System]System.Text.RegularExpressions.Regex::Match(string,
+      IL_0017:  nop
+      IL_0018:  ldloc.1
+      IL_0019:  ldstr      "^\\d+"
+      IL_001e:  call       class [System]System.Text.RegularExpressions.Match [System]System.Text.RegularExpressions.Regex::Match(string,
                                                                                                                                   string)
-      IL_001b:  stloc.3
-      IL_001c:  ldloc.3
-      IL_001d:  callvirt   instance bool [System]System.Text.RegularExpressions.Group::get_Success()
-      IL_0022:  brfalse.s  IL_0037
-
+      IL_0023:  stloc.3
       IL_0024:  ldloc.3
-      IL_0025:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
-      IL_002a:  call       int32 [mscorlib]System.Int32::Parse(string)
-      IL_002f:  ldarg.0
-      IL_0030:  ceq
-      IL_0032:  ldc.i4.0
-      IL_0033:  ceq
-      IL_0035:  br.s       IL_0038
+      IL_0025:  callvirt   instance bool [System]System.Text.RegularExpressions.Group::get_Success()
+      IL_002a:  brfalse.s  IL_003f
 
-      IL_0037:  ldc.i4.1
-      IL_0038:  stloc.s    CS$4$0001
-      IL_003a:  ldloc.s    CS$4$0001
-      IL_003c:  brtrue.s   IL_0077
+      IL_002c:  ldloc.3
+      IL_002d:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
+      IL_0032:  call       int32 [mscorlib]System.Int32::Parse(string)
+      IL_0037:  ldarg.0
+      IL_0038:  ceq
+      IL_003a:  ldc.i4.0
+      IL_003b:  ceq
+      IL_003d:  br.s       IL_0040
 
-      IL_003e:  nop
-      IL_003f:  ldloc.1
-      IL_0040:  ldstr      ",\\s+(\\S+)"
-      IL_0045:  call       class [System]System.Text.RegularExpressions.Match [System]System.Text.RegularExpressions.Regex::Match(string,
+      IL_003f:  ldc.i4.1
+      IL_0040:  stloc.s    CS$4$0001
+      IL_0042:  ldloc.s    CS$4$0001
+      IL_0044:  brtrue.s   IL_007f
+
+      IL_0046:  nop
+      IL_0047:  ldloc.1
+      IL_0048:  ldstr      ",\\s+(\\S+)"
+      IL_004d:  call       class [System]System.Text.RegularExpressions.Match [System]System.Text.RegularExpressions.Regex::Match(string,
                                                                                                                                   string)
-      IL_004a:  stloc.s    constantMatch
-      IL_004c:  ldloc.s    constantMatch
-      IL_004e:  callvirt   instance bool [System]System.Text.RegularExpressions.Group::get_Success()
-      IL_0053:  ldc.i4.0
-      IL_0054:  ceq
-      IL_0056:  stloc.s    CS$4$0001
-      IL_0058:  ldloc.s    CS$4$0001
-      IL_005a:  brtrue.s   IL_0076
+      IL_0052:  stloc.s    constantMatch
+      IL_0054:  ldloc.s    constantMatch
+      IL_0056:  callvirt   instance bool [System]System.Text.RegularExpressions.Group::get_Success()
+      IL_005b:  ldc.i4.0
+      IL_005c:  ceq
+      IL_005e:  stloc.s    CS$4$0001
+      IL_0060:  ldloc.s    CS$4$0001
+      IL_0062:  brtrue.s   IL_007e
 
-      IL_005c:  nop
-      IL_005d:  ldarg.1
-      IL_005e:  ldc.i4.1
-      IL_005f:  stind.i1
-      IL_0060:  ldloc.s    constantMatch
-      IL_0062:  callvirt   instance class [System]System.Text.RegularExpressions.GroupCollection [System]System.Text.RegularExpressions.Match::get_Groups()
-      IL_0067:  ldc.i4.1
-      IL_0068:  callvirt   instance class [System]System.Text.RegularExpressions.Group [System]System.Text.RegularExpressions.GroupCollection::get_Item(int32)
-      IL_006d:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
-      IL_0072:  stloc.s    CS$1$0000
-      IL_0074:  leave.s    IL_00ac
+      IL_0064:  nop
+      IL_0065:  ldarg.1
+      IL_0066:  ldc.i4.1
+      IL_0067:  stind.i1
+      IL_0068:  ldloc.s    constantMatch
+      IL_006a:  callvirt   instance class [System]System.Text.RegularExpressions.GroupCollection [System]System.Text.RegularExpressions.Match::get_Groups()
+      IL_006f:  ldc.i4.1
+      IL_0070:  callvirt   instance class [System]System.Text.RegularExpressions.Group [System]System.Text.RegularExpressions.GroupCollection::get_Item(int32)
+      IL_0075:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
+      IL_007a:  stloc.s    CS$1$0000
+      IL_007c:  leave.s    IL_00b4
 
-      IL_0076:  nop
-      IL_0077:  nop
-      IL_0078:  ldloc.0
-      IL_0079:  callvirt   instance string [mscorlib]System.IO.TextReader::ReadLine()
-      IL_007e:  dup
-      IL_007f:  stloc.1
-      IL_0080:  call       bool [mscorlib]System.String::IsNullOrWhiteSpace(string)
-      IL_0085:  ldc.i4.0
-      IL_0086:  ceq
-      IL_0088:  stloc.s    CS$4$0001
-      IL_008a:  ldloc.s    CS$4$0001
-      IL_008c:  brtrue.s   IL_000f
+      IL_007e:  nop
+      IL_007f:  nop
+      IL_0080:  ldloc.0
+      IL_0081:  callvirt   instance string [mscorlib]System.IO.TextReader::ReadLine()
+      IL_0086:  dup
+      IL_0087:  stloc.1
+      IL_0088:  call       bool [mscorlib]System.String::IsNullOrWhiteSpace(string)
+      IL_008d:  ldc.i4.0
+      IL_008e:  ceq
+      IL_0090:  stloc.s    CS$4$0001
+      IL_0092:  ldloc.s    CS$4$0001
+      IL_0094:  brtrue.s   IL_0017
 
-      IL_008e:  ldarg.1
-      IL_008f:  ldc.i4.0
-      IL_0090:  stind.i1
-      IL_0091:  ldsfld     string [mscorlib]System.String::Empty
-      IL_0096:  stloc.s    CS$1$0000
-      IL_0098:  leave.s    IL_00ac
+      IL_0096:  ldarg.1
+      IL_0097:  ldc.i4.0
+      IL_0098:  stind.i1
+      IL_0099:  ldsfld     string [mscorlib]System.String::Empty
+      IL_009e:  stloc.s    CS$1$0000
+      IL_00a0:  leave.s    IL_00b4
 
     }  // end .try
     finally
     {
-      IL_009a:  ldloc.0
-      IL_009b:  ldnull
-      IL_009c:  ceq
-      IL_009e:  stloc.s    CS$4$0001
-      IL_00a0:  ldloc.s    CS$4$0001
-      IL_00a2:  brtrue.s   IL_00ab
+      IL_00a2:  ldloc.0
+      IL_00a3:  ldnull
+      IL_00a4:  ceq
+      IL_00a6:  stloc.s    CS$4$0001
+      IL_00a8:  ldloc.s    CS$4$0001
+      IL_00aa:  brtrue.s   IL_00b3
 
-      IL_00a4:  ldloc.0
-      IL_00a5:  callvirt   instance void [mscorlib]System.IDisposable::Dispose()
-      IL_00aa:  nop
-      IL_00ab:  endfinally
+      IL_00ac:  ldloc.0
+      IL_00ad:  callvirt   instance void [mscorlib]System.IDisposable::Dispose()
+      IL_00b2:  nop
+      IL_00b3:  endfinally
     }  // end handler
-    IL_00ac:  nop
-    IL_00ad:  ldloc.s    CS$1$0000
-    IL_00af:  ret
-  } // end of method RemoteConstantLoader::GetCachedConstant
+    IL_00b4:  nop
+    IL_00b5:  ldloc.s    CS$1$0000
+    IL_00b7:  ret
+  } // end of method RemoteConstantLoader::GetFileCachedConstant
 
   .method private hidebysig static string 
           GetRemoteConstant(int32 id) cil managed

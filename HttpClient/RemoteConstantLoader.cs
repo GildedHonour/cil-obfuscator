@@ -16,9 +16,9 @@ namespace HttpClient
     /// </summary>
     internal static class RemoteConstantLoader
     {
-        private const string _serverUrl = "http://localhost:1234/aaa/bbb/";
-        private static readonly string _remoteFileName = string.Format("const-all-20121112-212051-TestAssembly.exe.txt");
-        private static readonly string _localCacheFileName = string.Format("const-all-20121112-212051-TestAssembly.exe.txt");
+        private const string _serverUrl = "should-be-replaced-http://localhost:1234/aaa/bbb/";
+        private static readonly string _remoteFileName = string.Format("should-be-replaced-const-all-20121112-212051-TestAssembly.exe.txt");
+        private static readonly string _localCacheFileName = string.Format("should-be-replaced-const-all-20121112-212051-TestAssembly.exe.txt");
         private static readonly object _locker = new object();
         private const int _arraySize = 50;
         private static string[] _constant = new string[_arraySize];
@@ -112,41 +112,37 @@ namespace HttpClient
                 return _constant[id - 1];
             }
 
-            if (File.Exists(_localCacheFileName))
-            {
-                bool cachedConstantExists;
-                string cachedConstant = GetCachedConstant(id, out cachedConstantExists);
-                if (cachedConstantExists)
-                {
-                    if (_showConstantLoadingAlerts)
-                    {
-                        MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
-                    }
-
-                    lock (_locker)
-                    {
-                        _isConstantLoaded[id - 1] = true;
-                        _constant[id - 1] = cachedConstant;
-                    }
-
-                    return _constant[id - 1];
-                }
-            }
-
-            string remoteConstant = GetRemoteConstant(id);
-            CacheConstantToFile(id, remoteConstant);
             lock (_locker)
             {
+                if (File.Exists(_localCacheFileName))
+                {
+                    bool cachedConstantExists;
+                    string cachedConstant;
+                    if (GetFileCachedConstant(id, out cachedConstant))
+                    {
+                        if (_showConstantLoadingAlerts)
+                        {
+                            MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
+                        }
+                        
+                        _constant[id - 1] = cachedConstant;
+                        _isConstantLoaded[id - 1] = true;
+
+                        return _constant[id - 1];
+                    }
+                }
+
+                string remoteConstant = GetRemoteConstant(id);
+                CacheConstantToFile(id, remoteConstant);
                 _constant[id - 1] = remoteConstant;
                 _isConstantLoaded[id - 1] = true;
-            }
+                if (_showConstantLoadingAlerts)
+                {
+                    MessageBox.Show(string.Format("Server constant: id => {0}, value => {1}", id, _constant[id - 1]));
+                }
 
-            if (_showConstantLoadingAlerts)
-            {
-                MessageBox.Show(string.Format("Server constant: id => {0}, value => {1}", id, _constant[id - 1]));
+                return _constant[id - 1];
             }
-
-            return _constant[id - 1];
         }
 
         private static void CacheConstantToFile(int id, string constantToCache)
@@ -160,9 +156,9 @@ namespace HttpClient
             }
         }
 
-        private static string GetCachedConstant(int id, out bool cachedConstantExists)
+        private static bool GetFileCachedConstant(int id, out string cachedConstant)
         {
-            using (StreamReader reader = new StreamReader(_localCacheFileName))
+            using (StreamReader reader = new StreamReader(new FileStream(_localCacheFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
             {
                 string line;
                 int currentID;
@@ -174,14 +170,14 @@ namespace HttpClient
                         Match constantMatch = Regex.Match(line, @",\s+(\S+)");
                         if (constantMatch.Success)
                         {
-                            cachedConstantExists = true;
-                            return constantMatch.Groups[1].Value;
+                            cachedConstant = constantMatch.Groups[1].Value;
+                            return true;
                         }
                     }
                 }
 
-                cachedConstantExists = false;
-                return string.Empty;
+                cachedConstant = string.Empty;
+                return false;
             }
         }
 
@@ -193,13 +189,12 @@ namespace HttpClient
                 System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient { BaseAddress = new Uri(_serverUrl) };
                 Task<HttpResponseMessage> responseTask = _httpClient.GetAsync(queryString);
                 string result = string.Empty;
-                responseTask.ContinueWith(x => result = PrintRemoteConstant(id, x))
-                    .Wait();
+                responseTask.ContinueWith(x => result = GetRemoteConstantValue(id, x)).Wait();
                 return result;
             }
         }
 
-        private static string PrintRemoteConstant(int id, Task<HttpResponseMessage> httpTask)
+        private static string GetRemoteConstantValue(int id, Task<HttpResponseMessage> httpTask)
         {
             Task<string> task = httpTask.Result.Content.ReadAsStringAsync();
             string result = string.Empty;

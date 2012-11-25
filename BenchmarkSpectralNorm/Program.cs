@@ -58,18 +58,12 @@ namespace BenchmarkSpectralNorm
                 u[i] = 1.0;
 
             int nthread = Environment.ProcessorCount;
-
             BarrierHandle barrier = new BarrierHandle(nthread);
             // objects contain result of each thread
-
             Approximate[] apx = new Approximate[nthread];
-
             // thread handle for waiting/joining
-
             Thread[] threads = new Thread[nthread];
-
             // create thread and hand out tasks
-
             int chunk = n / nthread;
             for (int i = 0; i < nthread; i++)
             {
@@ -83,12 +77,10 @@ namespace BenchmarkSpectralNorm
             }
 
             // collect results
-
             double vBv = 0, vv = 0;
             for (int i = 0; i < nthread; i++)
             {
                 threads[i].Join();
-
                 vBv += apx[i].m_vBv;
                 vv += apx[i].m_vv;
             }
@@ -103,7 +95,6 @@ namespace BenchmarkSpectralNorm
             private double[] m_v;
             private double[] m_tmp;
             private int m_range_begin, m_range_end;
-
             public double m_vBv = 0, m_vv = 0;
 
             public Approximate(double[] u, double[] v, double[] tmp, int rbegin, int rend)
@@ -167,7 +158,6 @@ namespace BenchmarkSpectralNorm
             {
                 MultiplyAv(v, tmp);
                 Barrier.WaitOne();
-
                 MultiplyAtv(tmp, AtAv);
                 Barrier.WaitOne();
             }

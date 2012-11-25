@@ -8,43 +8,36 @@ namespace BenchmarkFasta
 {
     class Fasta
     {
-        static void Main(string[] args)
-        {
-            MakeCumulative(HomoSapiens);
-            MakeCumulative(IUB);
-
-            int n = args.Length > 0 ? Int32.Parse(args[0]) : 1000;
-
-            using (Stream s = Console.OpenStandardOutput())
-            {
-                MakeRepeatFasta("ONE", "Homo sapiens alu", Encoding.ASCII.GetBytes(ALU), n * 2, s);
-                MakeRandomFasta("TWO", "IUB ambiguity codes", IUB, n * 3, s);
-                MakeRandomFasta("THREE", "Homo sapiens frequency", HomoSapiens, n * 5, s);
-            }
-        }
-
         // The usual pseudo-random number generator
 
+        static int seed = 42;
         const int IM = 139968;
         const int IA = 3877;
         const int IC = 29573;
-        static int seed = 42;
+        static string ALU = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
-        static double random(double max)
-        {
-            return max * ((seed = (seed * IA + IC) % IM) * (1.0 / IM));
-        }
+        static Frequency[] IUB = {
+		         new Frequency ('a', 0.27)
+			    ,new Frequency ('c', 0.12)
+			    ,new Frequency ('g', 0.12)
+			    ,new Frequency ('t', 0.27)
 
-        // Weighted selection from alphabet
-
-        static string ALU =
-            "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
-            "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
-            "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT" +
-            "ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA" +
-            "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
-            "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
-            "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+			    ,new Frequency ('B', 0.02)
+			    ,new Frequency ('D', 0.02)
+			    ,new Frequency ('H', 0.02)
+			    ,new Frequency ('K', 0.02)
+			    ,new Frequency ('M', 0.02)
+			    ,new Frequency ('N', 0.02)
+			    ,new Frequency ('R', 0.02)
+			    ,new Frequency ('S', 0.02)
+			    ,new Frequency ('V', 0.02)
+			    ,new Frequency ('W', 0.02)
+			    ,new Frequency ('Y', 0.02)
+	    };
+        const int LineLength = 60;
+        static int index = 0;
+        static byte[] buf = new byte[1024];
+        static Frequency[] HomoSapiens = { new Frequency('a', 0.3029549426680), new Frequency('c', 0.1979883004921), new Frequency('g', 0.1975473066391), new Frequency('t', 0.3015094502008) };
 
         class Frequency
         {
@@ -58,31 +51,23 @@ namespace BenchmarkFasta
             }
         }
 
-        static Frequency[] IUB = {
-		new Frequency ('a', 0.27)
-			,new Frequency ('c', 0.12)
-			,new Frequency ('g', 0.12)
-			,new Frequency ('t', 0.27)
+        static void Main(string[] args)
+        {
+            MakeCumulative(HomoSapiens);
+            MakeCumulative(IUB);
+            int n = args.Length > 0 ? Int32.Parse(args[0]) : 1000;
+            using (Stream s = Console.OpenStandardOutput())
+            {
+                MakeRepeatFasta("ONE", "Homo sapiens alu", Encoding.ASCII.GetBytes(ALU), n * 2, s);
+                MakeRandomFasta("TWO", "IUB ambiguity codes", IUB, n * 3, s);
+                MakeRandomFasta("THREE", "Homo sapiens frequency", HomoSapiens, n * 5, s);
+            }
+        }
 
-			,new Frequency ('B', 0.02)
-			,new Frequency ('D', 0.02)
-			,new Frequency ('H', 0.02)
-			,new Frequency ('K', 0.02)
-			,new Frequency ('M', 0.02)
-			,new Frequency ('N', 0.02)
-			,new Frequency ('R', 0.02)
-			,new Frequency ('S', 0.02)
-			,new Frequency ('V', 0.02)
-			,new Frequency ('W', 0.02)
-			,new Frequency ('Y', 0.02)
-	};
-
-        static Frequency[] HomoSapiens = {
-		new Frequency ('a', 0.3029549426680)
-			,new Frequency ('c', 0.1979883004921)
-			,new Frequency ('g', 0.1975473066391)
-			,new Frequency ('t', 0.3015094502008)
-	};
+        static double random(double max)
+        {
+            return max * ((seed = (seed * IA + IC) % IM) * (1.0 / IM));
+        }
 
         static void MakeCumulative(Frequency[] a)
         {
@@ -94,21 +79,15 @@ namespace BenchmarkFasta
             }
         }
 
-        // naive
         static byte SelectRandom(Frequency[] a)
         {
             double r = random(1.0);
-
             for (int i = 0; i < a.Length; i++)
                 if (r < a[i].p)
                     return a[i].c;
 
             return a[a.Length - 1].c;
         }
-
-        const int LineLength = 60;
-        static int index = 0;
-        static byte[] buf = new byte[1024];
 
         static void MakeRandomFasta(string id, string desc, Frequency[] a, int n, Stream s)
         {
