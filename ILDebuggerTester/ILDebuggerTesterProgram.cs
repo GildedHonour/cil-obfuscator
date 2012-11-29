@@ -163,8 +163,3 @@ internal class SpectralNorm
         }
     }
 }
-
-
-
-
-
