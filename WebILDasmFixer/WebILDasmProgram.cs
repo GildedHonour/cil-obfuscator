@@ -59,15 +59,14 @@ namespace WebILDasmFixer
         private static string _modifiedILFile;
 
         /// <summary>
-        /// CIL loading instructions
-        /// </summary>
-        private static IEnumerable<CILInstruction> _loadingInstructions = new List<CILInstruction>();
-
-
-        /// <summary>
         /// Count of instructions 
         /// </summary>
         private const int _instructionWithArgumentItemsCount = 2;
+
+        /// <summary>
+        /// Constant loading instructions
+        /// </summary>
+        private static List<CILInstruction> _constantLoadingInstructions = new List<CILInstruction>();
 
         /// <summary>
         /// There are 16 of the constant loading instructions
@@ -115,15 +114,6 @@ namespace WebILDasmFixer
                                                                    "brzero.s"
                                                                };
 
-        #region Constant Loader Injected Code
-
-        /// <summary>
-        /// Code of class to be injected into a *.il file and compiled to load constants from external source
-        /// </summary>
-        private static StringBuilder _cilClassConstantLoaderCode = new StringBuilder();
-
-        #endregion
-
         /// <summary>
         /// Full name of class which loads constants from external source
         /// </summary>
@@ -151,21 +141,79 @@ namespace WebILDasmFixer
             //    Console.ReadLine();
             //    return;
             //}
-            _sourceAssembly = "BenchmarkFasta.exe";
+            _sourceAssembly = "BenchmarkSpectralNorm.exe";
             InitializeILFileNames();
             DisassemblySourceAssemblyFile();
             Thread.Sleep(1000);
 
-            int constantsCount = CreateConstantsFile();
+            ProcessSourceILFile();
             Thread.Sleep(1000);
 
-            BuildCILClassConstantLoaderCode(constantsCount);
-
-            CreateModifiedILFile();
+            CreateConstantsFile();
             Thread.Sleep(1000);
 
             CreateModifiedAssemblyFile();
-            //DisassemblyModifiedILFile();
+        }
+
+        private static void ProcessSourceILFile()
+        {
+            using (var stream = new FileStream(_sourceILFile, FileMode.Open, FileAccess.Read, FileShare.None))
+            using (var peekableReader = new PeekableStreamReader(stream))
+            using (var writer = new StreamWriter(_modifiedILFile, true))
+            {
+                string line;
+                while ((line = peekableReader.ReadLine()) != null)
+                {
+                    CILInstruction instruction = ParseCILInstruction(line, peekableReader);
+                    if (instruction != null)
+                    {
+                        if (instruction.IsConstantLoading)
+                        {
+                            instruction.ID = (_constantLoadingInstructions.Count + 1).ToString();
+                            _constantLoadingInstructions.Add(instruction);
+                            string instructionToWrite = GetChangedConstantLoadingIntruction(instruction);
+                            writer.WriteLine(instructionToWrite);
+                        }
+                        else
+                        {
+                            string instructionToWrite = string.Format("\t\t{0}:\t{1}\t{2}", instruction.Label, instruction.OriginalCode.Replace(".s", string.Empty), instruction.Argument);
+                            writer.WriteLine(instructionToWrite);
+                        }
+                    }
+                    else
+                    {
+                        writer.WriteLine(line);
+                    }
+                }
+
+                StringBuilder cilClassConstantLoaderCode =  BuildCILClassConstantLoaderCode();
+                writer.WriteLine(cilClassConstantLoaderCode);
+            }
+        }
+
+        private static void CreateConstantsFile()
+        {
+            StringBuilder constantExporter = new StringBuilder();
+            foreach (var instruction in _constantLoadingInstructions)
+            {
+                if (instruction.HasArgument)
+                {
+                    constantExporter.AppendLine(string.Format("{0}, {1}", instruction.ID, instruction.Argument));
+                }
+            }
+
+            if (File.Exists(_constantsFileName))
+            {
+                File.Delete(_constantsFileName);
+            }
+
+            using (var stream = new FileStream(_constantsFileName, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                using (TextWriter writer = new StreamWriter(stream))
+                {
+                    writer.Write(constantExporter.ToString());
+                }
+            }
         }
 
         /// <summary>
@@ -203,73 +251,8 @@ namespace WebILDasmFixer
             }
         }
 
-        /// <summary>
-        /// Creates a text file with constants
-        /// </summary>
-        public static int CreateConstantsFile()
-        {
-            _loadingInstructions = GetCILInstructions()
-                .Where(x => x != null)
-                .Where(x => x.IsConstantLoading)
-                .ToList();
-            int counter = 0;
-            foreach (var inst in _loadingInstructions)
-            {
-                inst.ID = (++counter).ToString();
-            }
 
-            Console.WriteLine("Creating a file with the constants...");
-            StringBuilder csvExporter = new StringBuilder();
-            foreach (var instruction in _loadingInstructions)
-            {
-                if (instruction.HasArgument)
-                {
-                    csvExporter.AppendLine(string.Format("{0}, {1}", instruction.ID, instruction.Argument));
-                }
-                else
-                {
-                    csvExporter.AppendLine(instruction.ID);
-                }
-            }
-
-            if (File.Exists(_constantsFileName))
-            {
-                File.Delete(_constantsFileName);
-            }
-
-            using (var stream = new FileStream(_constantsFileName, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            {
-                using (TextWriter writer = new StreamWriter(stream))
-                {
-                    writer.Write(csvExporter.ToString());
-                }
-            }
-
-            return _loadingInstructions.Max(x => int.Parse(x.ID));
-        }
-
-        /// <summary>
-        /// Reads the source il file to parse the instructions from it
-        /// </summary>
-        /// <returns>IEnumerable of the CIL instructions</returns>
-        public static IEnumerable<CILInstruction> GetCILInstructions()
-        {
-            Console.WriteLine("Getting constant loading instructions...");
-            using (var stream = new FileStream(_sourceILFile, FileMode.Open, FileAccess.Read, FileShare.None))
-            using (var peekableReader = new PeekableStreamReader(stream))
-            {
-                string line;
-                while ((line = peekableReader.ReadLine()) != null)
-                {
-                    //если Line - это загрузка строки, тогда передавать полную строку (несколько строк)
-                    //или передать reader или делегат и читать (peek) уже в самой yield return ParseCILInstruction(line, reader);
-                    yield return ParseCILInstruction(line, peekableReader);
-                }
-            }
-        }
-
-
-        public static CILInstruction ParseCILInstruction(string line, PeekableStreamReader peekableReader = null)
+        public static CILInstruction ParseCILInstruction(string line, PeekableStreamReader peekableReader)
         {
             Match match = Regex.Match(line, @"(\S+):[^\S]+((.\S+).*)");
             if (match.Success)
@@ -290,30 +273,27 @@ namespace WebILDasmFixer
                         {
                             //!!!если есть перенос на другие строки, то прочитать их тоже
                             argument = string.Join(" ", instructions.Skip(1));
-                            if (peekableReader != null)
+                            string maybeNextString = peekableReader.PeekLine();
+                            var maybeNextStringMatch = Regex.Match(maybeNextString, @"\s+[+]\s+[""](.+)[""]");
+                            //remove last quote mark
+                            bool isLastMarkQuoteRemoved = false;
+                            if (maybeNextStringMatch.Success)
                             {
-                                string maybeNextString = peekableReader.PeekLine();
-                                var maybeNextStringMatch = Regex.Match(maybeNextString, @"\s+[+]\s+[""](.+)[""]");
-                                //remove last quote mark
-                                bool isLastMarkQuoteRemoved = false;
-                                if (maybeNextStringMatch.Success)
-                                {
-                                    argument = argument.Remove(argument.Length - 1);
-                                    isLastMarkQuoteRemoved = true;
-                                }
+                                argument = argument.Remove(argument.Length - 1);
+                                isLastMarkQuoteRemoved = true;
+                            }
 
-                                while (maybeNextStringMatch.Success)
-                                {
-                                    argument += maybeNextStringMatch.Groups[1].Value;
-                                    peekableReader.ReadLine();
-                                    maybeNextStringMatch = Regex.Match(peekableReader.PeekLine(), @"\s+[+]\s+[""](.+)[""]");
-                                }
+                            while (maybeNextStringMatch.Success)
+                            {
+                                argument += maybeNextStringMatch.Groups[1].Value;
+                                peekableReader.ReadLine();
+                                maybeNextStringMatch = Regex.Match(peekableReader.PeekLine(), @"\s+[+]\s+[""](.+)[""]");
+                            }
 
-                                //add the last quote mark to the end of the new string
-                                if (isLastMarkQuoteRemoved)
-                                {
-                                    argument += "\"";
-                                }
+                            //add the last quote mark to the end of the new string
+                            if (isLastMarkQuoteRemoved)
+                            {
+                                argument += "\"";
                             }
                         }
                         //else it's a normal constant loading insruction with argument(s) 
@@ -393,11 +373,10 @@ namespace WebILDasmFixer
         /// <summary>
         /// Build the cil code of remote constant loader class to inject it into the source assembly
         /// </summary>
-        /// <param name="instructionsCount">Constant loading instructions count</param>
-        private static void BuildCILClassConstantLoaderCode(int instructionsCount)
+        private static StringBuilder BuildCILClassConstantLoaderCode()
         {
             StringBuilder strBuilderCacheFields = new StringBuilder();
-            for (int i = 1; i <= instructionsCount; i++)
+            for (int i = 1; i <= _constantLoadingInstructions.Count(); i++)
             {
                 strBuilderCacheFields.AppendFormat(".field private static string const{0}", i);
                 strBuilderCacheFields.AppendLine();
@@ -405,15 +384,15 @@ namespace WebILDasmFixer
                 strBuilderCacheFields.AppendLine();
             }
 
-            //TODO - replace with StringBuilder
             #region the cil code of httpClient to be injected to the modified assembly
 
-            _cilClassConstantLoaderCode.AppendFormat(
+            var cilClassConstantLoaderCode = new StringBuilder();
+            cilClassConstantLoaderCode.AppendFormat(
     @"
     .class private abstract auto ansi sealed beforefieldinit {0}
        extends [mscorlib]System.Object
 {{
-  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClass5'
+  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClass4'
          extends [mscorlib]System.Object
   {{
     .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = ( 01 00 00 00 ) 
@@ -426,15 +405,15 @@ namespace WebILDasmFixer
       IL_0000:  ldarg.0
       IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
       IL_0006:  ret
-    }} // end of method '<>c__DisplayClass5'::.ctor
+    }} // end of method '<>c__DisplayClass4'::.ctor
 
-  }} // end of class '<>c__DisplayClass5'
+  }} // end of class '<>c__DisplayClass4'
 
-  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClass7'
+  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClass6'
          extends [mscorlib]System.Object
   {{
     .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = ( 01 00 00 00 ) 
-    .field public class {0}/'<>c__DisplayClass5' 'CS$<>8__locals6'
+    .field public class {0}/'<>c__DisplayClass4' 'CS$<>8__locals5'
     .field public string result
     .method public hidebysig specialname rtspecialname 
             instance void  .ctor() cil managed
@@ -444,10 +423,10 @@ namespace WebILDasmFixer
       IL_0000:  ldarg.0
       IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
       IL_0006:  ret
-    }} // end of method '<>c__DisplayClass7'::.ctor
+    }} // end of method '<>c__DisplayClass6'::.ctor
 
     .method public hidebysig instance string 
-            '<GetRemoteConstant>b__4'(class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> x) cil managed
+            '<GetRemoteConstant>b__3'(class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> x) cil managed
     {{
       // 
       .maxstack  3
@@ -455,25 +434,25 @@ namespace WebILDasmFixer
                [1] string CS$0$0001)
       IL_0000:  ldarg.0
       IL_0001:  ldarg.0
-      IL_0002:  ldfld      class {0}/'<>c__DisplayClass5' {0}/'<>c__DisplayClass7'::'CS$<>8__locals6'
-      IL_0007:  ldfld      int32 {0}/'<>c__DisplayClass5'::id
+      IL_0002:  ldfld      class {0}/'<>c__DisplayClass4' {0}/'<>c__DisplayClass6'::'CS$<>8__locals5'
+      IL_0007:  ldfld      int32 {0}/'<>c__DisplayClass4'::id
       IL_000c:  ldarg.1
-      IL_000d:  call       string {0}::PrintRemoteConstant(int32,
-                                                                                       class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>)
+      IL_000d:  call       string {0}::GetRemoteConstantValue(int32,
+                                                                                          class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>)
       IL_0012:  dup
       IL_0013:  stloc.1
-      IL_0014:  stfld      string {0}/'<>c__DisplayClass7'::result
+      IL_0014:  stfld      string {0}/'<>c__DisplayClass6'::result
       IL_0019:  ldloc.1
       IL_001a:  stloc.0
       IL_001b:  br.s       IL_001d
 
       IL_001d:  ldloc.0
       IL_001e:  ret
-    }} // end of method '<>c__DisplayClass7'::'<GetRemoteConstant>b__4'
+    }} // end of method '<>c__DisplayClass6'::'<GetRemoteConstant>b__3'
 
-  }} // end of class '<>c__DisplayClass7'
+  }} // end of class '<>c__DisplayClass6'
 
-  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClassa'
+  .class auto ansi sealed nested private beforefieldinit '<>c__DisplayClass9'
          extends [mscorlib]System.Object
   {{
     .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = ( 01 00 00 00 ) 
@@ -486,10 +465,10 @@ namespace WebILDasmFixer
       IL_0000:  ldarg.0
       IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
       IL_0006:  ret
-    }} // end of method '<>c__DisplayClassa'::.ctor
+    }} // end of method '<>c__DisplayClass9'::.ctor
 
     .method public hidebysig instance string 
-            '<PrintRemoteConstant>b__9'(class [mscorlib]System.Threading.Tasks.Task`1<string> t) cil managed
+            '<GetRemoteConstantValue>b__8'(class [mscorlib]System.Threading.Tasks.Task`1<string> t) cil managed
     {{
       // 
       .maxstack  3
@@ -500,16 +479,16 @@ namespace WebILDasmFixer
       IL_0002:  callvirt   instance !0 class [mscorlib]System.Threading.Tasks.Task`1<string>::get_Result()
       IL_0007:  dup
       IL_0008:  stloc.1
-      IL_0009:  stfld      string {0}/'<>c__DisplayClassa'::result
+      IL_0009:  stfld      string {0}/'<>c__DisplayClass9'::result
       IL_000e:  ldloc.1
       IL_000f:  stloc.0
       IL_0010:  br.s       IL_0012
 
       IL_0012:  ldloc.0
       IL_0013:  ret
-    }} // end of method '<>c__DisplayClassa'::'<PrintRemoteConstant>b__9'
+    }} // end of method '<>c__DisplayClass9'::'<GetRemoteConstantValue>b__8'
 
-  }} // end of class '<>c__DisplayClassa'
+  }} // end of class '<>c__DisplayClass9'
 
   .field private static literal string _serverUrl = ""{1}""
   .field private static literal int32 _arraySize = int32(0x00000032)
@@ -651,19 +630,18 @@ namespace WebILDasmFixer
     IL_0010:  ret
   }} // end of method RemoteConstantLoader::LoadFloat64
 
-   .method public hidebysig static string 
+  .method public hidebysig static string 
           LoadConstant(int32 id) cil managed
   {{
     // 
     .maxstack  5
     .locals init ([0] bool cachedConstantExists,
              [1] string cachedConstant,
-             [2] bool '<>s__LockTaken0',
-             [3] string remoteConstant,
-             [4] bool '<>s__LockTaken1',
-             [5] string CS$1$0000,
-             [6] bool CS$4$0001,
-             [7] object CS$2$0002)
+             [2] string remoteConstant,
+             [3] bool '<>s__LockTaken0',
+             [4] string CS$1$0000,
+             [5] bool CS$4$0001,
+             [6] object CS$2$0002)
     IL_0000:  nop
     IL_0001:  ldsfld     bool[] {0}::_isConstantLoaded
     IL_0006:  ldarg.0
@@ -705,183 +683,147 @@ namespace WebILDasmFixer
     IL_004a:  sub
     IL_004b:  ldelem.ref
     IL_004c:  stloc.s    CS$1$0000
-    IL_004e:  br         IL_017f
+    IL_004e:  br         IL_0147
 
-    IL_0053:  ldsfld     string {0}::_localCacheFileName
-    IL_0058:  call       bool [mscorlib]System.IO.File::Exists(string)
-    IL_005d:  ldc.i4.0
-    IL_005e:  ceq
-    IL_0060:  stloc.s    CS$4$0001
-    IL_0062:  ldloc.s    CS$4$0001
-    IL_0064:  brtrue     IL_00f4
-
-    IL_0069:  nop
-    IL_006a:  ldarg.0
-    IL_006b:  ldloca.s   cachedConstantExists
-    IL_006d:  call       string {0}::GetFileCachedConstant(int32,
-                                                                                       bool&)
-    IL_0072:  stloc.1
-    IL_0073:  ldloc.0
-    IL_0074:  ldc.i4.0
-    IL_0075:  ceq
-    IL_0077:  stloc.s    CS$4$0001
-    IL_0079:  ldloc.s    CS$4$0001
-    IL_007b:  brtrue.s   IL_00f3
-
-    IL_007d:  nop
-    IL_007e:  ldsfld     bool {0}::_showConstantLoadingAlerts
-    IL_0083:  ldc.i4.0
-    IL_0084:  ceq
-    IL_0086:  stloc.s    CS$4$0001
-    IL_0088:  ldloc.s    CS$4$0001
-    IL_008a:  brtrue.s   IL_00a5
-
-    IL_008c:  nop
-    IL_008d:  ldstr      ""Cached file constant: id => {{0}}, value => {{1}}""
-    IL_0092:  ldarg.0
-    IL_0093:  box        [mscorlib]System.Int32
-    IL_0098:  ldloc.1
-    IL_0099:  call       string [mscorlib]System.String::Format(string,
-                                                                object,
-                                                                object)
-    IL_009e:  call       valuetype [System.Windows.Forms]System.Windows.Forms.DialogResult [System.Windows.Forms]System.Windows.Forms.MessageBox::Show(string)
-    IL_00a3:  pop
-    IL_00a4:  nop
-    IL_00a5:  ldc.i4.0
-    IL_00a6:  stloc.2
+    IL_0053:  ldc.i4.0
+    IL_0054:  stloc.3
     .try
     {{
-      IL_00a7:  ldsfld     object {0}::_locker
-      IL_00ac:  dup
-      IL_00ad:  stloc.s    CS$2$0002
-      IL_00af:  ldloca.s   '<>s__LockTaken0'
-      IL_00b1:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
+      IL_0055:  ldsfld     object {0}::_locker
+      IL_005a:  dup
+      IL_005b:  stloc.s    CS$2$0002
+      IL_005d:  ldloca.s   '<>s__LockTaken0'
+      IL_005f:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
                                                                           bool&)
-      IL_00b6:  nop
-      IL_00b7:  nop
-      IL_00b8:  ldsfld     bool[] {0}::_isConstantLoaded
-      IL_00bd:  ldarg.0
-      IL_00be:  ldc.i4.1
-      IL_00bf:  sub
-      IL_00c0:  ldc.i4.1
-      IL_00c1:  stelem.i1
-      IL_00c2:  ldsfld     string[] {0}::_constant
-      IL_00c7:  ldarg.0
-      IL_00c8:  ldc.i4.1
-      IL_00c9:  sub
-      IL_00ca:  ldloc.1
-      IL_00cb:  stelem.ref
-      IL_00cc:  nop
-      IL_00cd:  leave.s    IL_00e2
+      IL_0064:  nop
+      IL_0065:  nop
+      IL_0066:  ldsfld     string {0}::_localCacheFileName
+      IL_006b:  call       bool [mscorlib]System.IO.File::Exists(string)
+      IL_0070:  ldc.i4.0
+      IL_0071:  ceq
+      IL_0073:  stloc.s    CS$4$0001
+      IL_0075:  ldloc.s    CS$4$0001
+      IL_0077:  brtrue.s   IL_00d5
 
-    }}  // end .try
-    finally
-    {{
-      IL_00cf:  ldloc.2
-      IL_00d0:  ldc.i4.0
-      IL_00d1:  ceq
-      IL_00d3:  stloc.s    CS$4$0001
-      IL_00d5:  ldloc.s    CS$4$0001
-      IL_00d7:  brtrue.s   IL_00e1
+      IL_0079:  nop
+      IL_007a:  ldarg.0
+      IL_007b:  ldloca.s   cachedConstant
+      IL_007d:  call       bool {0}::GetFileCachedConstant(int32,
+                                                                                       string&)
+      IL_0082:  ldc.i4.0
+      IL_0083:  ceq
+      IL_0085:  stloc.s    CS$4$0001
+      IL_0087:  ldloc.s    CS$4$0001
+      IL_0089:  brtrue.s   IL_00d4
 
-      IL_00d9:  ldloc.s    CS$2$0002
-      IL_00db:  call       void [mscorlib]System.Threading.Monitor::Exit(object)
-      IL_00e0:  nop
-      IL_00e1:  endfinally
-    }}  // end handler
-    IL_00e2:  nop
-    IL_00e3:  ldsfld     string[] {0}::_constant
-    IL_00e8:  ldarg.0
-    IL_00e9:  ldc.i4.1
-    IL_00ea:  sub
-    IL_00eb:  ldelem.ref
-    IL_00ec:  stloc.s    CS$1$0000
-    IL_00ee:  br         IL_017f
+      IL_008b:  nop
+      IL_008c:  ldsfld     bool {0}::_showConstantLoadingAlerts
+      IL_0091:  ldc.i4.0
+      IL_0092:  ceq
+      IL_0094:  stloc.s    CS$4$0001
+      IL_0096:  ldloc.s    CS$4$0001
+      IL_0098:  brtrue.s   IL_00b3
 
-    IL_00f3:  nop
-    IL_00f4:  ldarg.0
-    IL_00f5:  call       string {0}::GetRemoteConstant(int32)
-    IL_00fa:  stloc.3
-    IL_00fb:  ldc.i4.0
-    IL_00fc:  stloc.s    '<>s__LockTaken1'
-    .try
-    {{
-      IL_00fe:  ldsfld     object {0}::_locker
-      IL_0103:  dup
-      IL_0104:  stloc.s    CS$2$0002
-      IL_0106:  ldloca.s   '<>s__LockTaken1'
-      IL_0108:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
-                                                                          bool&)
-      IL_010d:  nop
-      IL_010e:  nop
-      IL_010f:  ldarg.0
-      IL_0110:  ldloc.3
-      IL_0111:  call       void {0}::CacheConstantToFile(int32,
+      IL_009a:  nop
+      IL_009b:  ldstr      ""Cached file constant: id => {{0}}, value => {{1}}""
+      IL_00a0:  ldarg.0
+      IL_00a1:  box        [mscorlib]System.Int32
+      IL_00a6:  ldloc.1
+      IL_00a7:  call       string [mscorlib]System.String::Format(string,
+                                                                  object,
+                                                                  object)
+      IL_00ac:  call       valuetype [System.Windows.Forms]System.Windows.Forms.DialogResult [System.Windows.Forms]System.Windows.Forms.MessageBox::Show(string)
+      IL_00b1:  pop
+      IL_00b2:  nop
+      IL_00b3:  ldsfld     string[] {0}::_constant
+      IL_00b8:  ldarg.0
+      IL_00b9:  ldc.i4.1
+      IL_00ba:  sub
+      IL_00bb:  ldloc.1
+      IL_00bc:  stelem.ref
+      IL_00bd:  ldsfld     bool[] {0}::_isConstantLoaded
+      IL_00c2:  ldarg.0
+      IL_00c3:  ldc.i4.1
+      IL_00c4:  sub
+      IL_00c5:  ldc.i4.1
+      IL_00c6:  stelem.i1
+      IL_00c7:  ldsfld     string[] {0}::_constant
+      IL_00cc:  ldarg.0
+      IL_00cd:  ldc.i4.1
+      IL_00ce:  sub
+      IL_00cf:  ldelem.ref
+      IL_00d0:  stloc.s    CS$1$0000
+      IL_00d2:  leave.s    IL_0147
+
+      IL_00d4:  nop
+      IL_00d5:  ldarg.0
+      IL_00d6:  call       string {0}::GetRemoteConstant(int32)
+      IL_00db:  stloc.2
+      IL_00dc:  ldarg.0
+      IL_00dd:  ldloc.2
+      IL_00de:  call       void {0}::CacheConstantToFile(int32,
                                                                                      string)
-      IL_0116:  nop
-      IL_0117:  ldsfld     string[] {0}::_constant
-      IL_011c:  ldarg.0
-      IL_011d:  ldc.i4.1
-      IL_011e:  sub
-      IL_011f:  ldloc.3
-      IL_0120:  stelem.ref
-      IL_0121:  ldsfld     bool[] {0}::_isConstantLoaded
-      IL_0126:  ldarg.0
-      IL_0127:  ldc.i4.1
-      IL_0128:  sub
-      IL_0129:  ldc.i4.1
-      IL_012a:  stelem.i1
-      IL_012b:  nop
-      IL_012c:  leave.s    IL_0142
+      IL_00e3:  nop
+      IL_00e4:  ldsfld     string[] {0}::_constant
+      IL_00e9:  ldarg.0
+      IL_00ea:  ldc.i4.1
+      IL_00eb:  sub
+      IL_00ec:  ldloc.2
+      IL_00ed:  stelem.ref
+      IL_00ee:  ldsfld     bool[] {0}::_isConstantLoaded
+      IL_00f3:  ldarg.0
+      IL_00f4:  ldc.i4.1
+      IL_00f5:  sub
+      IL_00f6:  ldc.i4.1
+      IL_00f7:  stelem.i1
+      IL_00f8:  ldsfld     bool {0}::_showConstantLoadingAlerts
+      IL_00fd:  ldc.i4.0
+      IL_00fe:  ceq
+      IL_0100:  stloc.s    CS$4$0001
+      IL_0102:  ldloc.s    CS$4$0001
+      IL_0104:  brtrue.s   IL_0127
+
+      IL_0106:  nop
+      IL_0107:  ldstr      ""Server constant: id => {{0}}, value => {{1}}""
+      IL_010c:  ldarg.0
+      IL_010d:  box        [mscorlib]System.Int32
+      IL_0112:  ldsfld     string[] {0}::_constant
+      IL_0117:  ldarg.0
+      IL_0118:  ldc.i4.1
+      IL_0119:  sub
+      IL_011a:  ldelem.ref
+      IL_011b:  call       string [mscorlib]System.String::Format(string,
+                                                                  object,
+                                                                  object)
+      IL_0120:  call       valuetype [System.Windows.Forms]System.Windows.Forms.DialogResult [System.Windows.Forms]System.Windows.Forms.MessageBox::Show(string)
+      IL_0125:  pop
+      IL_0126:  nop
+      IL_0127:  ldsfld     string[] {0}::_constant
+      IL_012c:  ldarg.0
+      IL_012d:  ldc.i4.1
+      IL_012e:  sub
+      IL_012f:  ldelem.ref
+      IL_0130:  stloc.s    CS$1$0000
+      IL_0132:  leave.s    IL_0147
 
     }}  // end .try
     finally
     {{
-      IL_012e:  ldloc.s    '<>s__LockTaken1'
-      IL_0130:  ldc.i4.0
-      IL_0131:  ceq
-      IL_0133:  stloc.s    CS$4$0001
-      IL_0135:  ldloc.s    CS$4$0001
-      IL_0137:  brtrue.s   IL_0141
+      IL_0134:  ldloc.3
+      IL_0135:  ldc.i4.0
+      IL_0136:  ceq
+      IL_0138:  stloc.s    CS$4$0001
+      IL_013a:  ldloc.s    CS$4$0001
+      IL_013c:  brtrue.s   IL_0146
 
-      IL_0139:  ldloc.s    CS$2$0002
-      IL_013b:  call       void [mscorlib]System.Threading.Monitor::Exit(object)
-      IL_0140:  nop
-      IL_0141:  endfinally
+      IL_013e:  ldloc.s    CS$2$0002
+      IL_0140:  call       void [mscorlib]System.Threading.Monitor::Exit(object)
+      IL_0145:  nop
+      IL_0146:  endfinally
     }}  // end handler
-    IL_0142:  nop
-    IL_0143:  ldsfld     bool {0}::_showConstantLoadingAlerts
-    IL_0148:  ldc.i4.0
-    IL_0149:  ceq
-    IL_014b:  stloc.s    CS$4$0001
-    IL_014d:  ldloc.s    CS$4$0001
-    IL_014f:  brtrue.s   IL_0172
-
-    IL_0151:  nop
-    IL_0152:  ldstr      ""Server constant: id => {{0}}, value => {{1}}""
-    IL_0157:  ldarg.0
-    IL_0158:  box        [mscorlib]System.Int32
-    IL_015d:  ldsfld     string[] {0}::_constant
-    IL_0162:  ldarg.0
-    IL_0163:  ldc.i4.1
-    IL_0164:  sub
-    IL_0165:  ldelem.ref
-    IL_0166:  call       string [mscorlib]System.String::Format(string,
-                                                                object,
-                                                                object)
-    IL_016b:  call       valuetype [System.Windows.Forms]System.Windows.Forms.DialogResult [System.Windows.Forms]System.Windows.Forms.MessageBox::Show(string)
-    IL_0170:  pop
-    IL_0171:  nop
-    IL_0172:  ldsfld     string[] {0}::_constant
-    IL_0177:  ldarg.0
-    IL_0178:  ldc.i4.1
-    IL_0179:  sub
-    IL_017a:  ldelem.ref
-    IL_017b:  stloc.s    CS$1$0000
-    IL_017d:  br.s       IL_017f
-
-    IL_017f:  ldloc.s    CS$1$0000
-    IL_0181:  ret
+    IL_0147:  nop
+    IL_0148:  ldloc.s    CS$1$0000
+    IL_014a:  ret
   }} // end of method RemoteConstantLoader::LoadConstant
 
   .method private hidebysig static void  CacheConstantToFile(int32 id,
@@ -960,9 +902,8 @@ namespace WebILDasmFixer
     IL_0057:  ret
   }} // end of method RemoteConstantLoader::CacheConstantToFile
 
-.method private hidebysig static string 
-          GetFileCachedConstant(int32 id,
-                                [out] bool& cachedConstantExists) cil managed
+  .method private hidebysig static bool  GetFileCachedConstant(int32 id,
+                                                               [out] string& cachedConstant) cil managed
   {{
     // 
     .maxstack  5
@@ -971,7 +912,7 @@ namespace WebILDasmFixer
              [2] int32 currentID,
              [3] class [System]System.Text.RegularExpressions.Match idMatch,
              [4] class [System]System.Text.RegularExpressions.Match constantMatch,
-             [5] string CS$1$0000,
+             [5] bool CS$1$0000,
              [6] bool CS$4$0001)
     IL_0000:  nop
     IL_0001:  ldsfld     string {0}::_localCacheFileName
@@ -1029,13 +970,13 @@ namespace WebILDasmFixer
 
       IL_0064:  nop
       IL_0065:  ldarg.1
-      IL_0066:  ldc.i4.1
-      IL_0067:  stind.i1
-      IL_0068:  ldloc.s    constantMatch
-      IL_006a:  callvirt   instance class [System]System.Text.RegularExpressions.GroupCollection [System]System.Text.RegularExpressions.Match::get_Groups()
-      IL_006f:  ldc.i4.1
-      IL_0070:  callvirt   instance class [System]System.Text.RegularExpressions.Group [System]System.Text.RegularExpressions.GroupCollection::get_Item(int32)
-      IL_0075:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
+      IL_0066:  ldloc.s    constantMatch
+      IL_0068:  callvirt   instance class [System]System.Text.RegularExpressions.GroupCollection [System]System.Text.RegularExpressions.Match::get_Groups()
+      IL_006d:  ldc.i4.1
+      IL_006e:  callvirt   instance class [System]System.Text.RegularExpressions.Group [System]System.Text.RegularExpressions.GroupCollection::get_Item(int32)
+      IL_0073:  callvirt   instance string [System]System.Text.RegularExpressions.Capture::get_Value()
+      IL_0078:  stind.ref
+      IL_0079:  ldc.i4.1
       IL_007a:  stloc.s    CS$1$0000
       IL_007c:  leave.s    IL_00b4
 
@@ -1053,9 +994,9 @@ namespace WebILDasmFixer
       IL_0094:  brtrue.s   IL_0017
 
       IL_0096:  ldarg.1
-      IL_0097:  ldc.i4.0
-      IL_0098:  stind.i1
-      IL_0099:  ldsfld     string [mscorlib]System.String::Empty
+      IL_0097:  ldsfld     string [mscorlib]System.String::Empty
+      IL_009c:  stind.ref
+      IL_009d:  ldc.i4.0
       IL_009e:  stloc.s    CS$1$0000
       IL_00a0:  leave.s    IL_00b4
 
@@ -1087,32 +1028,32 @@ namespace WebILDasmFixer
     .locals init ([0] string queryString,
              [1] class [System.Net.Http]System.Net.Http.HttpClient _httpClient,
              [2] class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> responseTask,
-             [3] class [System.Net.Http]System.Net.Http.HttpClient '<>g__initLocal3',
-             [4] class {0}/'<>c__DisplayClass7' 'CS$<>8__locals8',
-             [5] bool '<>s__LockTaken2',
-             [6] class {0}/'<>c__DisplayClass5' 'CS$<>8__locals6',
+             [3] class [System.Net.Http]System.Net.Http.HttpClient '<>g__initLocal2',
+             [4] class {0}/'<>c__DisplayClass6' 'CS$<>8__locals7',
+             [5] bool '<>s__LockTaken1',
+             [6] class {0}/'<>c__DisplayClass4' 'CS$<>8__locals5',
              [7] string CS$1$0000,
              [8] object CS$2$0001,
              [9] bool CS$4$0002)
-    IL_0000:  newobj     instance void {0}/'<>c__DisplayClass5'::.ctor()
-    IL_0005:  stloc.s    'CS$<>8__locals6'
-    IL_0007:  ldloc.s    'CS$<>8__locals6'
+    IL_0000:  newobj     instance void {0}/'<>c__DisplayClass4'::.ctor()
+    IL_0005:  stloc.s    'CS$<>8__locals5'
+    IL_0007:  ldloc.s    'CS$<>8__locals5'
     IL_0009:  ldarg.0
-    IL_000a:  stfld      int32 {0}/'<>c__DisplayClass5'::id
+    IL_000a:  stfld      int32 {0}/'<>c__DisplayClass4'::id
     IL_000f:  nop
     IL_0010:  ldc.i4.0
-    IL_0011:  stloc.s    '<>s__LockTaken2'
+    IL_0011:  stloc.s    '<>s__LockTaken1'
     .try
     {{
-      IL_0013:  newobj     instance void {0}/'<>c__DisplayClass7'::.ctor()
-      IL_0018:  stloc.s    'CS$<>8__locals8'
-      IL_001a:  ldloc.s    'CS$<>8__locals8'
-      IL_001c:  ldloc.s    'CS$<>8__locals6'
-      IL_001e:  stfld      class {0}/'<>c__DisplayClass5' {0}/'<>c__DisplayClass7'::'CS$<>8__locals6'
+      IL_0013:  newobj     instance void {0}/'<>c__DisplayClass6'::.ctor()
+      IL_0018:  stloc.s    'CS$<>8__locals7'
+      IL_001a:  ldloc.s    'CS$<>8__locals7'
+      IL_001c:  ldloc.s    'CS$<>8__locals5'
+      IL_001e:  stfld      class {0}/'<>c__DisplayClass4' {0}/'<>c__DisplayClass6'::'CS$<>8__locals5'
       IL_0023:  ldsfld     object {0}::_locker
       IL_0028:  dup
       IL_0029:  stloc.s    CS$2$0001
-      IL_002b:  ldloca.s   '<>s__LockTaken2'
+      IL_002b:  ldloca.s   '<>s__LockTaken1'
       IL_002d:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
                                                                           bool&)
       IL_0032:  nop
@@ -1120,8 +1061,8 @@ namespace WebILDasmFixer
       IL_0034:  ldstr      ""{{0}}\?file_name={{1}}&constant_id={{2}}""
       IL_0039:  ldstr      ""{1}""
       IL_003e:  ldsfld     string {0}::_remoteFileName
-      IL_0043:  ldloc.s    'CS$<>8__locals6'
-      IL_0045:  ldfld      int32 {0}/'<>c__DisplayClass5'::id
+      IL_0043:  ldloc.s    'CS$<>8__locals5'
+      IL_0045:  ldfld      int32 {0}/'<>c__DisplayClass4'::id
       IL_004a:  box        [mscorlib]System.Int32
       IL_004f:  call       string [mscorlib]System.String::Format(string,
                                                                   object,
@@ -1141,26 +1082,26 @@ namespace WebILDasmFixer
       IL_006f:  ldloc.0
       IL_0070:  callvirt   instance class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> [System.Net.Http]System.Net.Http.HttpClient::GetAsync(string)
       IL_0075:  stloc.2
-      IL_0076:  ldloc.s    'CS$<>8__locals8'
+      IL_0076:  ldloc.s    'CS$<>8__locals7'
       IL_0078:  ldsfld     string [mscorlib]System.String::Empty
-      IL_007d:  stfld      string {0}/'<>c__DisplayClass7'::result
+      IL_007d:  stfld      string {0}/'<>c__DisplayClass6'::result
       IL_0082:  ldloc.2
-      IL_0083:  ldloc.s    'CS$<>8__locals8'
-      IL_0085:  ldftn      instance string {0}/'<>c__DisplayClass7'::'<GetRemoteConstant>b__4'(class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>)
+      IL_0083:  ldloc.s    'CS$<>8__locals7'
+      IL_0085:  ldftn      instance string {0}/'<>c__DisplayClass6'::'<GetRemoteConstant>b__3'(class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>)
       IL_008b:  newobj     instance void class [mscorlib]System.Func`2<class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>,string>::.ctor(object,
                                                                                                                                                                                                 native int)
       IL_0090:  callvirt   instance class [mscorlib]System.Threading.Tasks.Task`1<!!0> class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage>::ContinueWith<string>(class [mscorlib]System.Func`2<class [mscorlib]System.Threading.Tasks.Task`1<!0>,!!0>)
       IL_0095:  callvirt   instance void [mscorlib]System.Threading.Tasks.Task::Wait()
       IL_009a:  nop
-      IL_009b:  ldloc.s    'CS$<>8__locals8'
-      IL_009d:  ldfld      string {0}/'<>c__DisplayClass7'::result
+      IL_009b:  ldloc.s    'CS$<>8__locals7'
+      IL_009d:  ldfld      string {0}/'<>c__DisplayClass6'::result
       IL_00a2:  stloc.s    CS$1$0000
       IL_00a4:  leave.s    IL_00ba
 
     }}  // end .try
     finally
     {{
-      IL_00a6:  ldloc.s    '<>s__LockTaken2'
+      IL_00a6:  ldloc.s    '<>s__LockTaken1'
       IL_00a8:  ldc.i4.0
       IL_00a9:  ceq
       IL_00ab:  stloc.s    CS$4$0002
@@ -1178,15 +1119,15 @@ namespace WebILDasmFixer
   }} // end of method RemoteConstantLoader::GetRemoteConstant
 
   .method private hidebysig static string 
-          PrintRemoteConstant(int32 id,
-                              class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> httpTask) cil managed
+          GetRemoteConstantValue(int32 id,
+                                 class [mscorlib]System.Threading.Tasks.Task`1<class [System.Net.Http]System.Net.Http.HttpResponseMessage> httpTask) cil managed
   {{
     // 
     .maxstack  4
     .locals init ([0] class [mscorlib]System.Threading.Tasks.Task`1<string> task,
-             [1] class {0}/'<>c__DisplayClassa' 'CS$<>8__localsb',
+             [1] class {0}/'<>c__DisplayClass9' 'CS$<>8__localsa',
              [2] string CS$1$0000)
-    IL_0000:  newobj     instance void {0}/'<>c__DisplayClassa'::.ctor()
+    IL_0000:  newobj     instance void {0}/'<>c__DisplayClass9'::.ctor()
     IL_0005:  stloc.1
     IL_0006:  nop
     IL_0007:  ldarg.1
@@ -1196,23 +1137,23 @@ namespace WebILDasmFixer
     IL_0017:  stloc.0
     IL_0018:  ldloc.1
     IL_0019:  ldsfld     string [mscorlib]System.String::Empty
-    IL_001e:  stfld      string {0}/'<>c__DisplayClassa'::result
+    IL_001e:  stfld      string {0}/'<>c__DisplayClass9'::result
     IL_0023:  ldloc.0
     IL_0024:  ldloc.1
-    IL_0025:  ldftn      instance string {0}/'<>c__DisplayClassa'::'<PrintRemoteConstant>b__9'(class [mscorlib]System.Threading.Tasks.Task`1<string>)
+    IL_0025:  ldftn      instance string {0}/'<>c__DisplayClass9'::'<GetRemoteConstantValue>b__8'(class [mscorlib]System.Threading.Tasks.Task`1<string>)
     IL_002b:  newobj     instance void class [mscorlib]System.Func`2<class [mscorlib]System.Threading.Tasks.Task`1<string>,string>::.ctor(object,
                                                                                                                                           native int)
     IL_0030:  callvirt   instance class [mscorlib]System.Threading.Tasks.Task`1<!!0> class [mscorlib]System.Threading.Tasks.Task`1<string>::ContinueWith<string>(class [mscorlib]System.Func`2<class [mscorlib]System.Threading.Tasks.Task`1<!0>,!!0>)
     IL_0035:  callvirt   instance void [mscorlib]System.Threading.Tasks.Task::Wait()
     IL_003a:  nop
     IL_003b:  ldloc.1
-    IL_003c:  ldfld      string {0}/'<>c__DisplayClassa'::result
+    IL_003c:  ldfld      string {0}/'<>c__DisplayClass9'::result
     IL_0041:  stloc.2
     IL_0042:  br.s       IL_0044
 
     IL_0044:  ldloc.2
     IL_0045:  ret
-  }} // end of method RemoteConstantLoader::PrintRemoteConstant
+  }} // end of method RemoteConstantLoader::GetRemoteConstantValue
 
   .method private hidebysig static int32 
           GetBase(string 'value') cil managed
@@ -1268,10 +1209,10 @@ namespace WebILDasmFixer
   }} // end of method RemoteConstantLoader::.cctor
 
 }} // end of class {0}
-", _cilConstantLoaderFullClassName, ConfigurationManager.AppSettings["serverUrl"], _constantsFileName, _constantsCacheFileName, instructionsCount, bool.Parse(ConfigurationManager.AppSettings["showConstantLoadingAlerts"]) ? "1" : "0");
+", _cilConstantLoaderFullClassName, ConfigurationManager.AppSettings["serverUrl"], _constantsFileName, _constantsCacheFileName, _constantLoadingInstructions.Count(), bool.Parse(ConfigurationManager.AppSettings["showConstantLoadingAlerts"]) ? "1" : "0");
 
             #endregion
-
+            return cilClassConstantLoaderCode;
         }
 
         /// <summary>
@@ -1295,49 +1236,11 @@ namespace WebILDasmFixer
         }
 
         /// <summary>
-        /// Creates modified IL file
-        /// </summary>
-        private static void CreateModifiedILFile()
-        {
-            Console.WriteLine("Creating a modified IL file...");
-            string[] lines = File.ReadAllLines(_sourceILFile);
-            StringBuilder newLines = new StringBuilder();
-            int counter = 1;
-            foreach (var line in lines)
-            {
-                CILInstruction instruction = ParseCILInstruction(line);
-                if (instruction != null)
-                {
-                    if (instruction.IsConstantLoading)
-                    {
-                        instruction.ID = _loadingInstructions.Single(x => x.ID == counter.ToString()).ID;
-                        string instructionToWrite = GetChangedConstantLoadingIntruction(instruction);
-                        newLines.AppendLine(instructionToWrite);
-                        counter++;
-                    }
-                    else
-                    {
-                        string instructionToWrite = string.Format("\t\t{0}:\t{1}\t{2}", instruction.Label, instruction.OriginalCode.Replace(".s", string.Empty), instruction.Argument);
-                        newLines.AppendLine(instructionToWrite);
-                    }
-                }
-                else
-                {
-                    newLines.AppendLine(line);
-                }
-            }
-
-            newLines.AppendLine();
-            newLines.AppendLine(_cilClassConstantLoaderCode.ToString());
-            File.WriteAllText(_modifiedILFile, newLines.ToString());
-        }
-
-        /// <summary>
-        /// Returns constant loading instructions to call a method of ConstantRemover 
+        /// Returns the constant loading instructions to call a method of ConstantRemover 
         /// </summary>
         /// <param name="instruction">IL instruction</param>
-        /// <returns>IL instruction which calls a method of ConstantRemover to load
-        /// constant from CSV file
+        /// <returns>CIL instruction which calls a method of ConstantRemover to load
+        /// constant from a txt file
         /// </returns>
         public static string GetChangedConstantLoadingIntruction(CILInstruction instruction)
         {
@@ -1346,7 +1249,5 @@ namespace WebILDasmFixer
             loadingInstruction += string.Format("\t\t\t\t\t\t\tcall " + _constantLoadingInstuctions[instruction.OriginalCode], _cilConstantLoaderFullClassName);
             return loadingInstruction;
         }
-
-
     }
 }

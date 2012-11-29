@@ -114,22 +114,18 @@ namespace HttpClient
 
             lock (_locker)
             {
-                if (File.Exists(_localCacheFileName))
+                string cachedConstant;
+                if (File.Exists(_localCacheFileName) && GetFileCachedConstant(id, out cachedConstant))
                 {
-                    bool cachedConstantExists;
-                    string cachedConstant;
-                    if (GetFileCachedConstant(id, out cachedConstant))
+                    if (_showConstantLoadingAlerts)
                     {
-                        if (_showConstantLoadingAlerts)
-                        {
-                            MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
-                        }
-                        
-                        _constant[id - 1] = cachedConstant;
-                        _isConstantLoaded[id - 1] = true;
-
-                        return _constant[id - 1];
+                        MessageBox.Show(string.Format("Cached file constant: id => {0}, value => {1}", id, cachedConstant));
                     }
+
+                    _constant[id - 1] = cachedConstant;
+                    _isConstantLoaded[id - 1] = true;
+                    return _constant[id - 1];
+
                 }
 
                 string remoteConstant = GetRemoteConstant(id);

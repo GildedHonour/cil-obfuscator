@@ -1,0 +1,9 @@
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\ILDebuggerTester.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\ILDebuggerTester.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\obj\x86\Debug\ILDebuggerTester.exe
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\obj\x86\Debug\ILDebuggerTester.pdb
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\obj\x86\Debug\ILDebuggerTester.csprojResolveAssemblyReference.cache
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\System.Net.Http.dll
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\System.Net.Http.WebRequest.dll
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\System.Net.Http.xml
+C:\Users\Alex\Documents\Visual Studio 2010\Projects\WebILDasmFixer\ILDebuggerTester\bin\Debug\System.Net.Http.WebRequest.xml
