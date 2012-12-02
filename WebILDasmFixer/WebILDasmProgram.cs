@@ -36,7 +36,7 @@ namespace WebILDasmFixer
         /// <summary>
         /// IL instruction to load int 32
         /// </summary>
-        private const string _loadIntegerILInstruction = "ldc.i4";
+        private const string _loadIntegerCILInstruction = "ldc.i4";
 
         /// <summary>
         /// IL disassembler
@@ -95,6 +95,9 @@ namespace WebILDasmFixer
                                                                    {"ldstr", "string {0}::LoadString(int32)"} 
                                                                };
 
+        /// <summary>
+        /// The short branch instructions
+        /// </summary>
         private static readonly string[] _shortBranchInstuctions = new string[]
                                                                {
                                                                    "beq.s",
@@ -141,22 +144,48 @@ namespace WebILDasmFixer
             //    Console.ReadLine();
             //    return;
             //}
-            _sourceAssembly = "BenchmarkSpectralNorm.exe";
+            _sourceAssembly = "BenchmarkFasta.exe";
             InitializeILFileNames();
+
+            //create a source il file
             DisassemblySourceAssemblyFile();
-            Thread.Sleep(1000);
+            //Thread.Sleep(1000);
 
-            ProcessSourceILFile();
-            Thread.Sleep(1000);
+            //create a mofied il file by a reading source il file
+            CreateModifiedILFileFromSourceILFile();
+            //Thread.Sleep(1000);
 
+            //create a constant file
             CreateConstantsFile();
             Thread.Sleep(1000);
 
+            //create a modified assembly
             CreateModifiedAssemblyFile();
+
+            PrintBanner();
         }
 
-        private static void ProcessSourceILFile()
+        /// <summary>
+        /// Prints a message
+        /// </summary>
+        private static void PrintBanner()
         {
+            Console.WriteLine();
+            Console.WriteLine("-------------------------------------------------------------------");
+            Console.WriteLine("That's it!");
+            Console.WriteLine("-------------------------------------------------------------------");
+        }
+
+        /// <summary>
+        /// Creates a modified IL file from a source il file.
+        /// </summary>
+        private static void CreateModifiedILFileFromSourceILFile()
+        {
+            //The idea is to read a source IL file line by line and to try to parse CIL instruction.
+            // If it turns out to be a CIL instruction we need(!)
+            // then check if it's a constant loading instruction or 
+            // a short branch instuction end with .s (for example: br.s <int8 (target)> => br <int32 (target)>)
+            Console.WriteLine("Creating a source file and a modified il one...");
             using (var stream = new FileStream(_sourceILFile, FileMode.Open, FileAccess.Read, FileShare.None))
             using (var peekableReader = new PeekableStreamReader(stream))
             using (var writer = new StreamWriter(_modifiedILFile, true))
@@ -167,46 +196,61 @@ namespace WebILDasmFixer
                     CILInstruction instruction = ParseCILInstruction(line, peekableReader);
                     if (instruction != null)
                     {
+                        //if it's a constant loading instruction
                         if (instruction.IsConstantLoading)
                         {
+                            //assign id to it
                             instruction.ID = (_constantLoadingInstructions.Count + 1).ToString();
+                            //add it to list of constant loading instructions
                             _constantLoadingInstructions.Add(instruction);
+                            //get a instruction to replace it with
                             string instructionToWrite = GetChangedConstantLoadingIntruction(instruction);
+                            //write to a modified IL file
                             writer.WriteLine(instructionToWrite);
                         }
+                        //else it's a branch instrucion
                         else
                         {
+                            //replace a short branch instruction with a normal branch one
+                            //(for example: br.s <int8 (target)> => br <int32 (target)>)
                             string instructionToWrite = string.Format("\t\t{0}:\t{1}\t{2}", instruction.Label, instruction.OriginalCode.Replace(".s", string.Empty), instruction.Argument);
                             writer.WriteLine(instructionToWrite);
                         }
                     }
                     else
                     {
+                        //if it's an instruction we need then write it as it is to a modified file
                         writer.WriteLine(line);
                     }
                 }
 
-                StringBuilder cilClassConstantLoaderCode =  BuildCILClassConstantLoaderCode();
+                //append a code of constant remover class to a modified IL file
+                StringBuilder cilClassConstantLoaderCode = BuildCILClassConstantLoaderCode();
                 writer.WriteLine(cilClassConstantLoaderCode);
             }
         }
 
+        /// <summary>
+        /// Creates a file with constants
+        /// </summary>
         private static void CreateConstantsFile()
         {
             StringBuilder constantExporter = new StringBuilder();
             foreach (var instruction in _constantLoadingInstructions)
             {
-                if (instruction.HasArgument)
+                if (instruction.HasArgument)//TODO
                 {
                     constantExporter.AppendLine(string.Format("{0}, {1}", instruction.ID, instruction.Argument));
                 }
             }
 
+            //If a file exists then remove it
             if (File.Exists(_constantsFileName))
             {
                 File.Delete(_constantsFileName);
             }
 
+            //write the data to a file
             using (var stream = new FileStream(_constantsFileName, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 using (TextWriter writer = new StreamWriter(stream))
@@ -241,7 +285,7 @@ namespace WebILDasmFixer
         /// </summary>
         public static void DisassemblySourceAssemblyFile()
         {
-            Console.WriteLine("Disassemblying source assembly...");
+            Console.WriteLine("Disassemblying the source assembly...");
             ProcessStartInfo processStartInfo = new ProcessStartInfo(_cilDasm, _sourceAssembly + " /output:" + _sourceILFile);
             processStartInfo.UseShellExecute = false;
             processStartInfo.CreateNoWindow = false;
@@ -251,9 +295,16 @@ namespace WebILDasmFixer
             }
         }
 
-
+        /// <summary>
+        /// Parses a CIL instruction
+        /// </summary>
+        /// <param name="line">A line where it looks for a CIL instruction</param>
+        /// <param name="peekableReader">PeekableStreamReader</param>
+        /// <returns>CIL instruction if found, otherwise null</returns>
         public static CILInstruction ParseCILInstruction(string line, PeekableStreamReader peekableReader)
         {
+            //We are looking for only for instructions those look like
+            //      IL_xxxx:  some_intruction some_arguments
             Match match = Regex.Match(line, @"(\S+):[^\S]+((.\S+).*)");
             if (match.Success)
             {
@@ -261,21 +312,31 @@ namespace WebILDasmFixer
                 //if it's a contant loading instruction
                 if (_constantLoadingInstuctions.ContainsKey(originalCode))
                 {
+                    //proccess the whole instruction with arguments
                     string argument;
-                    var instructions = match.Groups[2].Value
+                    var rawInstruction = match.Groups[2].Value
                         .Split(' ')
                         .Where(x => !string.IsNullOrWhiteSpace(x));
                     //if it's an instruction with argument(s) like ldc.i4 123 
-                    if (instructions.Count() >= _instructionWithArgumentItemsCount)
+                    if (rawInstruction.Count() >= _instructionWithArgumentItemsCount)
                     {
                         //if it's a string loading instruction like ldstr "some str"
                         if (IsLoadStringInstruction(originalCode))
                         {
-                            //!!!если есть перенос на другие строки, то прочитать их тоже
-                            argument = string.Join(" ", instructions.Skip(1));
+                            //it might a string loading instruction with a huge argument
+                            //for example:
+                            //IL_0007:  ldstr      "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGA"
+                            //+ "GGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTA"
+                            //+ "AAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGA"
+                            //+ "GAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCAGCCTGGGCGA"
+                            //+ "CAGAGCGAGACTCCGTCTCAAAAA"
+                            
+                            //if so, if there is a word division then read the whole string keeping in mind word division(s)
+                            argument = string.Join(" ", rawInstruction.Skip(1));
                             string maybeNextString = peekableReader.PeekLine();
                             var maybeNextStringMatch = Regex.Match(maybeNextString, @"\s+[+]\s+[""](.+)[""]");
-                            //remove last quote mark
+                            
+                            //remove last quote mark from the original string
                             bool isLastMarkQuoteRemoved = false;
                             if (maybeNextStringMatch.Success)
                             {
@@ -283,6 +344,7 @@ namespace WebILDasmFixer
                                 isLastMarkQuoteRemoved = true;
                             }
 
+                            //read next line while it's allowed
                             while (maybeNextStringMatch.Success)
                             {
                                 argument += maybeNextStringMatch.Groups[1].Value;
@@ -290,16 +352,17 @@ namespace WebILDasmFixer
                                 maybeNextStringMatch = Regex.Match(peekableReader.PeekLine(), @"\s+[+]\s+[""](.+)[""]");
                             }
 
-                            //add the last quote mark to the end of the new string
+                            //add the last quote mark back to the end of the new string
                             if (isLastMarkQuoteRemoved)
                             {
                                 argument += "\"";
                             }
                         }
                         //else it's a normal constant loading insruction with argument(s) 
+                        //like ldc.i4 123
                         else
                         {
-                            argument = instructions
+                            argument = rawInstruction
                                 .Skip(1)
                                 .Take(1)
                                 .Single();
@@ -308,7 +371,8 @@ namespace WebILDasmFixer
                     //it's a constant loading insruction with no argument like ldc.i4.2 or ldc.i4.7
                     else
                     {
-                        string instruction = instructions.Single();
+                        //look for an argument followed by . (ldc.i4.2, where 2 is an argument)
+                        string instruction = rawInstruction.Single();
                         int lastDotIndex = instruction.LastIndexOf('.');
                         if ((instruction.Length - 1 - lastDotIndex) == 1)
                         {
@@ -316,7 +380,7 @@ namespace WebILDasmFixer
                         }
                         else
                         {
-                            argument = "-1";
+                            argument = "-1";//todo
                         }
                     }
 
@@ -333,6 +397,7 @@ namespace WebILDasmFixer
                 //(for example: br.s <int8 (target)> => br <int32 (target)>)
                 else
                 {
+                    //if it's a short branch instruction
                     if (_shortBranchInstuctions.Contains(originalCode))
                     {
                         string argument = match.Groups[2].Value
@@ -361,31 +426,20 @@ namespace WebILDasmFixer
         }
 
         /// <summary>
-        /// Checks if the IL instruction is loading string one (ldstr)
+        /// Checks if the CIL instruction is loading string one (ldstr)
         /// </summary>
-        /// <param name="instruction">the IL instruction</param>
-        /// <returns>True if the IL instruction is the loading string instruction, otherwise false</returns>
+        /// <param name="instruction">the CIL instruction</param>
+        /// <returns>True if the CIL instruction is the loading string instruction, otherwise false</returns>
         public static bool IsLoadStringInstruction(string instruction)
         {
             return instruction == "ldstr";
         }
 
         /// <summary>
-        /// Build the cil code of remote constant loader class to inject it into the source assembly
+        /// Build the CIL code of remote constant loader class to inject it into the source assembly
         /// </summary>
         private static StringBuilder BuildCILClassConstantLoaderCode()
         {
-            StringBuilder strBuilderCacheFields = new StringBuilder();
-            for (int i = 1; i <= _constantLoadingInstructions.Count(); i++)
-            {
-                strBuilderCacheFields.AppendFormat(".field private static string const{0}", i);
-                strBuilderCacheFields.AppendLine();
-                strBuilderCacheFields.AppendFormat(".field private static bool isConst{0}Loaded", i);
-                strBuilderCacheFields.AppendLine();
-            }
-
-            #region the cil code of httpClient to be injected to the modified assembly
-
             var cilClassConstantLoaderCode = new StringBuilder();
             cilClassConstantLoaderCode.AppendFormat(
     @"
@@ -1211,7 +1265,6 @@ namespace WebILDasmFixer
 }} // end of class {0}
 ", _cilConstantLoaderFullClassName, ConfigurationManager.AppSettings["serverUrl"], _constantsFileName, _constantsCacheFileName, _constantLoadingInstructions.Count(), bool.Parse(ConfigurationManager.AppSettings["showConstantLoadingAlerts"]) ? "1" : "0");
 
-            #endregion
             return cilClassConstantLoaderCode;
         }
 
@@ -1220,7 +1273,7 @@ namespace WebILDasmFixer
         /// </summary>
         public static void CreateModifiedAssemblyFile()
         {
-            Console.WriteLine("Compiling...");
+            Console.WriteLine("Compiling the modified assembly...");
             string modifiedILFullFileName = Path.Combine(Directory.GetCurrentDirectory(), _modifiedILFile);
             string modifiedAssemblyFileFullName = Path.Combine(Directory.GetCurrentDirectory(), "ModifiedAssembly_" + Path.GetFileName(_sourceAssembly));
             string arguments = string.Format("\"{0}\" /exe /output:\"{1}\"  /debug=IMPL", modifiedILFullFileName, modifiedAssemblyFileFullName);
@@ -1228,7 +1281,6 @@ namespace WebILDasmFixer
             ProcessStartInfo processStartInfo = new ProcessStartInfo(workingDirectory + _cilCompiler, arguments);
             processStartInfo.UseShellExecute = false;
             processStartInfo.CreateNoWindow = false;
-            //processStartInfo.WorkingDirectory = 
             using (Process process = Process.Start(processStartInfo))
             {
                 process.WaitForExit();
@@ -1238,13 +1290,13 @@ namespace WebILDasmFixer
         /// <summary>
         /// Returns the constant loading instructions to call a method of ConstantRemover 
         /// </summary>
-        /// <param name="instruction">IL instruction</param>
+        /// <param name="instruction">CIL instruction</param>
         /// <returns>CIL instruction which calls a method of ConstantRemover to load
         /// constant from a txt file
         /// </returns>
         public static string GetChangedConstantLoadingIntruction(CILInstruction instruction)
         {
-            string loadingInstruction = string.Format("\t\t{0}:\t{1} {2}", instruction.Label, _loadIntegerILInstruction, int.Parse(instruction.ID));
+            string loadingInstruction = string.Format("\t\t{0}:\t{1} {2}", instruction.Label, _loadIntegerCILInstruction, int.Parse(instruction.ID));
             loadingInstruction += Environment.NewLine;
             loadingInstruction += string.Format("\t\t\t\t\t\t\tcall " + _constantLoadingInstuctions[instruction.OriginalCode], _cilConstantLoaderFullClassName);
             return loadingInstruction;

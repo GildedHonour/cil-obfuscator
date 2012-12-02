@@ -6,17 +6,17 @@ using System.Text;
 namespace WebILDasmFixer
 {
     /// <summary>
-    /// IL instructions
+    /// CIL instructions
     /// </summary>
     public class CILInstruction
     {
         /// <summary>
-        /// ID of intruction
+        /// ID of an intruction
         /// </summary>
         public string ID;
 
         /// <summary>
-        /// Opcode of instruction
+        /// Opcode of an instruction
         /// </summary>
         public string ConstantLoadingCode;
 
@@ -36,7 +36,7 @@ namespace WebILDasmFixer
         public string Label;
 
         /// <summary>
-        /// Is constant loading instruction
+        /// Is a constant loading instruction?
         /// </summary>
         public bool IsConstantLoading
         {
@@ -47,7 +47,7 @@ namespace WebILDasmFixer
         }
 
         /// <summary>
-        /// HasArgument
+        /// Has an argument
         /// </summary>
         public bool HasArgument
         {
@@ -56,17 +56,5 @@ namespace WebILDasmFixer
                 return !string.IsNullOrWhiteSpace(Argument);
             }
         }
-
-        //public override string ToString()
-        //{
-        //    if (HasArgument)
-        //    {
-        //        return string.Format("{0}: {1}", Label, ;
-        //    }
-        //    else
-        //    {
-        //        return "";
-        //    }
-        //}
     }
 }
