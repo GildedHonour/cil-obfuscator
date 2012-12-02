@@ -130,49 +130,59 @@ namespace WebILDasmFixer
         /// <param name="args">A source assembly as an argument</param>
         static void Main(string[] args)
         {
-            //if (args == null || !args.Any())
-            //{
-            //    Console.WriteLine("No assembly source(exe or dll) specified");
-            //    Console.ReadLine();
-            //    return;
-            //}
+            PrintHelloBanner();
+            if (args == null || !args.Any())
+            {
+                Console.WriteLine("No assembly source(exe or dll) specified");
+                Console.ReadLine();
+                return;
+            }
 
-            //SourceAssembly = args[0];
-            //if (!File.Exists(SourceAssembly))
-            //{
-            //    Console.WriteLine("File {0} is not found", SourceAssembly);
-            //    Console.ReadLine();
-            //    return;
-            //}
-            _sourceAssembly = "BenchmarkFasta.exe";
+            _sourceAssembly = args[0];
+            if (!File.Exists(_sourceAssembly))
+            {
+                Console.WriteLine("File {0} is not found", _sourceAssembly);
+                Console.ReadLine();
+                return;
+            }
+            //_sourceAssembly = "BenchmarkFasta.exe";
             InitializeILFileNames();
 
             //create a source il file
             DisassemblySourceAssemblyFile();
-            //Thread.Sleep(1000);
 
             //create a mofied il file by a reading source il file
             CreateModifiedILFileFromSourceILFile();
-            //Thread.Sleep(1000);
 
             //create a constant file
             CreateConstantsFile();
-            Thread.Sleep(1000);
 
             //create a modified assembly
             CreateModifiedAssemblyFile();
-
-            PrintBanner();
+            
+            //print a banner
+            PrintEndBanner();
         }
 
         /// <summary>
-        /// Prints a message
+        /// Prints a welcome message
         /// </summary>
-        private static void PrintBanner()
+        private static void PrintHelloBanner()
+        {
+            Console.WriteLine("-------------------------------------------------------------------");
+            Console.WriteLine("\t\t\t\tIt's starting right away...");
+            Console.WriteLine("-------------------------------------------------------------------");
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// Prints a final message
+        /// </summary>
+        private static void PrintEndBanner()
         {
             Console.WriteLine();
             Console.WriteLine("-------------------------------------------------------------------");
-            Console.WriteLine("That's it!");
+            Console.WriteLine("\t\t\t\tThat's it!");
             Console.WriteLine("-------------------------------------------------------------------");
         }
 
